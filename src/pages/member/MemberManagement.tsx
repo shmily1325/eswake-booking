@@ -136,6 +136,7 @@ export function MemberManagement() {
   const navigate = useNavigate()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
+  const [memberNotesLoading, setMemberNotesLoading] = useState(false)
   const [memberEnrichmentLoading, setMemberEnrichmentLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [addDialogOpen, setAddDialogOpen] = useState(false)
@@ -300,14 +301,60 @@ export function MemberManagement() {
         is_line_bound: previousMembersById.get(member.id)?.is_line_bound ?? false,
       }))
       setMembers(baseMembers)
+      setMemberNotesLoading(true)
       setMemberEnrichmentLoading(true)
       if (!silent) {
         setLoading(false)
       }
 
       const supplementalLoadFailures: string[] = []
-      // 基本清單顯示後，再於背景補齊置板、LINE、備忘錄與配對會員。
+      // 基本清單顯示後，先補備忘錄；其餘狀態再於背景完成。
       try {
+        const memberIds = membersData.map((m: { id: string }) => m.id)
+        let notesData: Array<{ id: number; member_id: string; event_date: string | null; event_type: string | null; description: string | null }> = []
+        let notesLoadSucceeded = true
+        try {
+          if (memberIds.length > 0) {
+            const idBatches = chunkArray(memberIds, IN_FILTER_BATCH_SIZE)
+            const notesBatches = await Promise.all(
+              idBatches.map((batch) =>
+                fetchAllPaginated(async (from, to) => {
+                  // @ts-ignore - member_notes 表
+                  const { data, error } = await supabase
+                    .from('member_notes')
+                    .select('id, member_id, event_date, event_type, description')
+                    .in('member_id', batch)
+                    .order('event_date', { ascending: true, nullsFirst: true })
+                    .range(from, to)
+                  return { data, error }
+                })
+              )
+            )
+            notesData = notesBatches.flat()
+          }
+        } catch (error) {
+          console.error('載入會員備忘錄失敗，改以會員資料繼續顯示:', error)
+          supplementalLoadFailures.push('備忘錄')
+          notesLoadSucceeded = false
+        }
+
+        const memberNotes: Record<string, MemberNote[]> = {}
+        notesData.forEach((note: any) => {
+          if (!memberNotes[note.member_id]) {
+            memberNotes[note.member_id] = []
+          }
+          memberNotes[note.member_id].push(note)
+        })
+
+        if (requestId !== memberLoadRequestIdRef.current) return
+        if (notesLoadSucceeded) {
+          setMembers(current => current.map(member => ({
+            ...member,
+            member_notes: memberNotes[member.id] || [],
+          })))
+        }
+        setMemberNotesLoading(false)
+
         const [boardResult, lineBindingsResult] = await Promise.all([
         supabase
           .from('board_storage')
@@ -336,8 +383,6 @@ export function MemberManagement() {
         const boardData = boardResult.data || []
         const lineBindingsData = lineBindingsResult.data || []
 
-      // 依已載入會員 ID 分批 + 分頁抓備忘錄（排序與原先整表查詢相同）
-      const memberIds = membersData.map((m: { id: string }) => m.id)
       let reminderMappingsData: Array<{
         id: string
         member_id: string | null
@@ -378,32 +423,6 @@ export function MemberManagement() {
           reminderMappingsLoadSucceeded = false
         }
       }
-      let notesData: Array<{ id: number; member_id: string; event_date: string | null; event_type: string | null; description: string | null }> = []
-      let notesLoadSucceeded = true
-      if (memberIds.length > 0) {
-        try {
-          const idBatches = chunkArray(memberIds, IN_FILTER_BATCH_SIZE)
-          const notesBatches = await Promise.all(
-            idBatches.map((batch) =>
-              fetchAllPaginated(async (from, to) => {
-                // @ts-ignore - member_notes 表
-                const { data, error } = await supabase
-                  .from('member_notes')
-                  .select('id, member_id, event_date, event_type, description')
-                  .in('member_id', batch)
-                  .order('event_date', { ascending: true, nullsFirst: true })
-                  .range(from, to)
-                return { data, error }
-              })
-            )
-          )
-          notesData = notesBatches.flat()
-        } catch (error) {
-          console.error('載入會員備忘錄失敗，改以會員資料繼續顯示:', error)
-          supplementalLoadFailures.push('備忘錄')
-          notesLoadSucceeded = false
-        }
-      }
 
       // 整理每個會員的置板資料
       const memberBoards: Record<string, Array<{ slot_number: number; start_date: string | null; expires_at: string | null }>> = {}
@@ -416,15 +435,6 @@ export function MemberManagement() {
           start_date: board.start_date,
           expires_at: board.expires_at
         })
-      })
-
-      // 整理每個會員的備忘錄
-      const memberNotes: Record<string, MemberNote[]> = {}
-      notesData.forEach((note: any) => {
-        if (!memberNotes[note.member_id]) {
-          memberNotes[note.member_id] = []
-        }
-        memberNotes[note.member_id].push(note)
       })
 
       // 載入配對會員資料
@@ -538,6 +548,7 @@ export function MemberManagement() {
       if (requestId !== memberLoadRequestIdRef.current) return
       console.error('載入會員失敗:', error)
       toast.error('載入會員失敗')
+      setMemberNotesLoading(false)
       setMemberEnrichmentLoading(false)
     } finally {
       if (requestId === memberLoadRequestIdRef.current) {
@@ -1267,7 +1278,7 @@ export function MemberManagement() {
           marginBottom: '10px',
           textAlign: 'center',
         }}>
-          正在補齊 LINE、置板與備忘錄資料…
+          正在補齊 LINE 與置板資料…
         </div>
       )}
 
@@ -1690,6 +1701,21 @@ export function MemberManagement() {
                     </div>
                   )}
                 </div>
+
+                {memberNotesLoading && (!member.member_notes || member.member_notes.length === 0) && (
+                  <div style={{
+                    marginTop: '12px',
+                    paddingTop: '12px',
+                    borderTop: `1px solid ${designSystem.colors.border.light}`,
+                  }}>
+                    <div style={{
+                      width: isMobile ? '62%' : '38%',
+                      height: '14px',
+                      borderRadius: designSystem.borderRadius.sm,
+                      background: designSystem.colors.border.light,
+                    }} />
+                  </div>
+                )}
 
                 {member.member_notes && member.member_notes.length > 0 && (() => {
                   const allNotes = member.member_notes.slice(-10)
