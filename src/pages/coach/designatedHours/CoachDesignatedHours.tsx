@@ -89,6 +89,7 @@ function dialogBackdrop(isMobile: boolean): React.CSSProperties {
 function dialogSurface(isMobile: boolean): React.CSSProperties {
   return {
     width: '100%',
+    boxSizing: 'border-box',
     maxWidth: 520,
     maxHeight: isMobile ? '92dvh' : '85vh',
     overflowY: 'auto',
@@ -685,7 +686,12 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
               value={ledgerImageStartDate}
               max={ledgerImageEndDate || getLocalDateString()}
               onChange={(event) => setLedgerImageStartDate(event.target.value)}
-              style={getInputStyle(isMobile)}
+              style={{
+                ...getInputStyle(isMobile),
+                boxSizing: 'border-box',
+                minWidth: 0,
+                maxWidth: '100%',
+              }}
             />
             <div style={{ height: 14 }} />
             <label style={getLabelStyle(isMobile)}>結束日期</label>
@@ -695,7 +701,12 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
               min={ledgerImageStartDate}
               max={getLocalDateString()}
               onChange={(event) => setLedgerImageEndDate(event.target.value)}
-              style={getInputStyle(isMobile)}
+              style={{
+                ...getInputStyle(isMobile),
+                boxSizing: 'border-box',
+                minWidth: 0,
+                maxWidth: '100%',
+              }}
             />
             <div style={{ display: 'flex', gap: 8, marginTop: 22 }}>
               <button
