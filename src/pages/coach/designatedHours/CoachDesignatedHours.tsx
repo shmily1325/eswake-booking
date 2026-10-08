@@ -23,6 +23,7 @@ import {
   downloadCoachDesignatedImages,
   type CoachDesignatedShareRow,
 } from './shareImages'
+import { selectCoachDesignatedLedgerRange } from './ledgerRange'
 import type {
   CoachDesignatedEligibleReport,
   CoachDesignatedEntry,
@@ -60,6 +61,16 @@ function createRequestKey(): string {
   bytes[8] = (bytes[8] & 0x3f) | 0x80
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+function getDaysAgoDateString(days: number): string {
+  const date = new Date()
+  date.setDate(date.getDate() - days)
+  return getLocalDateString(date)
+}
+
+function formatImageRange(startDate: string, endDate: string): string {
+  return `${startDate.replaceAll('-', '/')}－${endDate.replaceAll('-', '/')}`
 }
 
 function dialogBackdrop(isMobile: boolean): React.CSSProperties {
@@ -116,6 +127,9 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
   const [editMinutes, setEditMinutes] = useState('')
   const [editDate, setEditDate] = useState('')
   const [editNote, setEditNote] = useState('')
+  const [ledgerImageRangeOpen, setLedgerImageRangeOpen] = useState(false)
+  const [ledgerImageStartDate, setLedgerImageStartDate] = useState(getDaysAgoDateString(30))
+  const [ledgerImageEndDate, setLedgerImageEndDate] = useState(getLocalDateString())
 
   const selectedStudent = students.find((student) => student.member_id === selectedMemberId) || null
   const batches = useMemo(() => buildCoachDesignatedBatches(entries), [entries])
@@ -349,14 +363,33 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     }
   }
 
-  const ledgerRows: CoachDesignatedShareRow[] = entries
-    .slice()
-    .sort((a, b) => new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime())
-    .map((entry) => ({
+  const saveLedgerRangeImage = () => {
+    if (ledgerImageStartDate > ledgerImageEndDate) {
+      toast.warning('結束日期不能早於開始日期')
+      return
+    }
+    const range = selectCoachDesignatedLedgerRange(
+      entries,
+      ledgerImageStartDate,
+      ledgerImageEndDate,
+    )
+    if (range.entries.length === 0) {
+      toast.warning('這段期間沒有指定課流水')
+      return
+    }
+    const rangeRows: CoachDesignatedShareRow[] = range.entries.map((entry) => ({
       date: compactDate(entry.occurred_at),
       detail: entry.entry_type === 'credit' ? (entry.note || '購買指定課') : (entry.boat_name || '上課'),
       minutes: entry.delta_minutes,
     }))
+
+    setLedgerImageRangeOpen(false)
+    void saveImages(
+      formatImageRange(ledgerImageStartDate, ledgerImageEndDate),
+      rangeRows,
+      range.balanceAtEnd,
+    )
+  }
 
   const listPanel = (
     <section>
@@ -502,7 +535,11 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
           type="button"
           data-track="coach_designated_save_ledger_image"
           disabled={saving || entries.length === 0}
-          onClick={() => void saveImages('指定課流水', ledgerRows, balance)}
+          onClick={() => {
+            setLedgerImageStartDate(getDaysAgoDateString(30))
+            setLedgerImageEndDate(getLocalDateString())
+            setLedgerImageRangeOpen(true)
+          }}
           style={getButtonStyle('outline', 'medium', isMobile)}
         >
           {saving ? '產生中...' : '儲存圖片'}
@@ -627,6 +664,59 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         {(!isMobile || !selectedMemberId) && listPanel}
         {(!isMobile || selectedMemberId) && detailPanel}
       </div>
+
+      {ledgerImageRangeOpen && (
+        <div style={dialogBackdrop(isMobile)} onClick={() => setLedgerImageRangeOpen(false)}>
+          <div
+            style={{
+              ...dialogSurface(isMobile),
+              paddingBottom: isMobile
+                ? 'max(24px, calc(env(safe-area-inset-bottom, 0px) + 16px))'
+                : 24,
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 style={{ margin: '0 0 18px', fontSize: getFontSize('h2', isMobile) }}>
+              選擇流水期間
+            </h2>
+            <label style={getLabelStyle(isMobile)}>開始日期</label>
+            <input
+              type="date"
+              value={ledgerImageStartDate}
+              max={ledgerImageEndDate || getLocalDateString()}
+              onChange={(event) => setLedgerImageStartDate(event.target.value)}
+              style={getInputStyle(isMobile)}
+            />
+            <div style={{ height: 14 }} />
+            <label style={getLabelStyle(isMobile)}>結束日期</label>
+            <input
+              type="date"
+              value={ledgerImageEndDate}
+              min={ledgerImageStartDate}
+              max={getLocalDateString()}
+              onChange={(event) => setLedgerImageEndDate(event.target.value)}
+              style={getInputStyle(isMobile)}
+            />
+            <div style={{ display: 'flex', gap: 8, marginTop: 22 }}>
+              <button
+                type="button"
+                onClick={() => setLedgerImageRangeOpen(false)}
+                style={{ ...getButtonStyle('outline', 'medium', isMobile), flex: 1 }}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                data-track="coach_designated_save_ledger_range"
+                onClick={saveLedgerRangeImage}
+                style={{ ...getButtonStyle('primary', 'medium', isMobile), flex: 1 }}
+              >
+                產生圖片
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {creditOpen && (
         <div style={dialogBackdrop(isMobile)} onClick={resetCreditDialog}>
