@@ -18,7 +18,11 @@ const expirySummarySql = readFileSync(
   resolve(process.cwd(), 'migrations/250_add_designated_expiry_to_student_list.sql'),
   'utf8',
 )
-const combined = `${schemaSql}\n${rpcSql}\n${splitSql}\n${expirySummarySql}`.toLowerCase()
+const safeBackfillSql = readFileSync(
+  resolve(process.cwd(), 'migrations/253_add_safe_designated_backfill.sql'),
+  'utf8',
+)
+const combined = `${schemaSql}\n${rpcSql}\n${splitSql}\n${expirySummarySql}\n${safeBackfillSql}`.toLowerCase()
 
 describe('coach designated-hour migrations', () => {
   it('keeps the new ledger isolated from existing financial storage', () => {
@@ -99,6 +103,23 @@ describe('coach designated-hour migrations', () => {
     )
     expect(expirySummarySql).toMatch(
       /latest_gift\.occurred_at DESC, latest_gift\.id DESC/i,
+    )
+  })
+
+  it('locks and validates standalone backfills without touching financial storage', () => {
+    expect(safeBackfillSql).toContain('backfill_coach_designated_report_deductions')
+    expect(safeBackfillSql).toMatch(
+      /booking_participants[\s\S]*FOR UPDATE[\s\S]*member_id IS DISTINCT FROM p_member_id/i,
+    )
+    expect(safeBackfillSql).toMatch(
+      /coach_designated_hour_entries[\s\S]*FOR UPDATE[\s\S]*v_regular_total > v_regular_balance/i,
+    )
+    expect(safeBackfillSql).toContain('這筆上課紀錄已經扣除指定課')
+    expect(safeBackfillSql).toMatch(
+      /sync_coach_designated_report_deductions[\s\S]*jsonb_array_elements[\s\S]*ORDER BY \(value ->> 'participant_id'\)::INTEGER/i,
+    )
+    expect(safeBackfillSql).toMatch(
+      /v_existing\.regular_minutes IS DISTINCT FROM v_regular_minutes[\s\S]*CONTINUE/i,
     )
   })
 })

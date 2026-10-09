@@ -1996,6 +1996,10 @@ export type Database = {
         }
         Returns: Json
       }
+      backfill_coach_designated_report_deductions: {
+        Args: { p_coach_id: string; p_items: Json; p_member_id: string }
+        Returns: Json
+      }
       create_member_with_membership: {
         Args: {
           p_birthday?: string | null

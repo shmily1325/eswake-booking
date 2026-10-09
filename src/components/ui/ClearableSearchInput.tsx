@@ -64,7 +64,7 @@ export function ClearableSearchInput({
           aria-hidden="true"
           style={{
             position: 'absolute',
-            left: 13,
+            left: isMobile ? 16 : 13,
             top: '50%',
             transform: 'translateY(-50%)',
             color: designSystem.colors.text.disabled,
@@ -93,7 +93,7 @@ export function ClearableSearchInput({
           ...inputStyle,
           width: '100%',
           boxSizing: 'border-box',
-          paddingLeft: searchIconVisible ? 40 : undefined,
+          paddingLeft: searchIconVisible ? (isMobile ? 48 : 40) : undefined,
           paddingRight: value ? (isMobile ? 52 : 42) : undefined,
         }}
       />

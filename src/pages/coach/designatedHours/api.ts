@@ -176,3 +176,17 @@ export async function syncCoachDesignatedReportDeductions(
   if (error) throw error
   unwrap(data, {})
 }
+
+export async function backfillCoachDesignatedReportDeductions(
+  coachId: string,
+  memberId: string,
+  items: CoachDesignatedDeductionInput[],
+): Promise<void> {
+  const { data, error } = await supabase.rpc('backfill_coach_designated_report_deductions', {
+    p_coach_id: coachId,
+    p_member_id: memberId,
+    p_items: items as unknown as Json,
+  })
+  if (error) throw error
+  unwrap(data, {})
+}
