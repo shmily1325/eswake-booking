@@ -2,7 +2,7 @@
  * Design thinking (docs/design.md)
  * - Primary task: 找到學生，查看剩餘時數，必要時回報／修正時數。
  * - Avoid dashboard feel: no stat-card wall, no dense table, no explanatory callouts.
- * - Hierarchy: search/list → current balance → ledger; rare edits stay in dialogs.
+ * - Hierarchy: student list → current balance → ledger; rare edits stay in dialogs.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useMemberSearch } from '../../../hooks/useMemberSearch'
@@ -690,7 +690,25 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
 
   const listPanel = (
     <section>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: 12,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontSize: getFontSize('h3', isMobile),
+            fontWeight: 700,
+            color: designSystem.colors.text.primary,
+          }}
+        >
+          指定課學生
+        </h2>
         <button
           type="button"
           data-track="coach_designated_add_open"
@@ -700,7 +718,11 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
             setImageView('menu')
             setCreditOpen(true)
           }}
-          style={getButtonStyle('primary', 'medium', isMobile)}
+          style={{
+            ...getButtonStyle('primary', 'medium', isMobile),
+            flexShrink: 0,
+            minHeight: isMobile ? 44 : undefined,
+          }}
         >
           新增指定課
         </button>

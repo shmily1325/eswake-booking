@@ -79,6 +79,7 @@ describe('CoachDesignatedHours', () => {
   it('keeps adding credit separate from backfilling an existing report', async () => {
     render(<CoachDesignatedHours coachId="coach-1" isMobile />)
 
+    expect(await screen.findByRole('heading', { name: '指定課學生' })).toBeInTheDocument()
     const studentName = await screen.findByText('Penny')
     fireEvent.click(studentName.closest('button')!)
     await screen.findByText('Penny｜指定課')
@@ -109,6 +110,14 @@ describe('CoachDesignatedHours', () => {
       }],
     ))
     expect(mockedCreateCredit).not.toHaveBeenCalled()
+  })
+
+  it('keeps the global add action anchored to the student list on desktop', async () => {
+    render(<CoachDesignatedHours coachId="coach-1" isMobile={false} />)
+
+    expect(await screen.findByRole('heading', { name: '指定課學生' })).toBeInTheDocument()
+    expect(await screen.findByText('Penny｜指定課')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: '新增指定課' })).toHaveLength(2)
   })
 
   it('can split one backfilled report between regular and gift minutes', async () => {
