@@ -75,13 +75,13 @@ describe('AdminCoachDesignatedHours', () => {
     )
   })
 
-  it('keeps coach buttons horizontally scrollable on mobile', async () => {
+  it('wraps all coach buttons into mobile-friendly rows', async () => {
     render(<AdminCoachDesignatedHours isMobile />)
 
     const overviewButton = await screen.findByRole('button', { name: '總覽' })
     expect(overviewButton.parentElement).toHaveStyle({
-      flexWrap: 'nowrap',
-      overflowX: 'auto',
+      flexWrap: 'wrap',
+      overflowX: 'visible',
     })
   })
 })

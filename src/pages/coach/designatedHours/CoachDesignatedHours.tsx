@@ -1001,7 +1001,7 @@ export function CoachDesignatedHours({
     >
       <div
         style={{
-          padding: isMobile ? '32px 20px' : '46px 32px',
+          padding: isMobile ? '26px 20px' : '34px 32px',
           border: `1px solid ${designSystem.colors.border.light}`,
           borderRadius: designSystem.borderRadius.xl,
           background: designSystem.colors.background.card,
@@ -1009,44 +1009,16 @@ export function CoachDesignatedHours({
           boxShadow: designSystem.shadows.xs,
         }}
       >
-        <div
-          aria-hidden="true"
-          style={{
-            width: 48,
-            height: 48,
-            margin: '0 auto 16px',
-            borderRadius: designSystem.borderRadius.full,
-            background: designSystem.colors.background.hover,
-            color: designSystem.colors.text.secondary,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 25,
-            fontWeight: 400,
-          }}
-        >
-          ＋
-        </div>
         <h2
           style={{
-            margin: 0,
+            margin: '0 0 18px',
             color: designSystem.colors.text.primary,
             fontSize: getFontSize('h3', isMobile),
             fontWeight: 700,
           }}
         >
-          尚未建立指定課
+          尚無指定課
         </h2>
-        <p
-          style={{
-            margin: '8px 0 20px',
-            color: designSystem.colors.text.secondary,
-            fontSize: getFontSize('body', isMobile),
-            lineHeight: 1.6,
-          }}
-        >
-          新增第一筆後，學生與時數會顯示在這裡
-        </p>
         <button
           type="button"
           data-track="coach_designated_empty_add_open"

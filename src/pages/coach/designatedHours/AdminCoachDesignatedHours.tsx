@@ -101,8 +101,8 @@ export function AdminCoachDesignatedHours({
       <AdminPillRow
         style={{
           marginBottom: isMobile ? 14 : 18,
-          flexWrap: isMobile ? 'nowrap' : 'wrap',
-          overflowX: isMobile ? 'auto' : 'visible',
+          flexWrap: 'wrap',
+          overflowX: 'visible',
         }}
       >
         <AdminPillButton

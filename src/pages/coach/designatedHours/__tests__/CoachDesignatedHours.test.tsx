@@ -125,8 +125,7 @@ describe('CoachDesignatedHours', () => {
 
     render(<CoachDesignatedHours coachId="coach-empty" isMobile />)
 
-    expect(await screen.findByRole('heading', { name: '尚未建立指定課' })).toBeInTheDocument()
-    expect(screen.getByText('新增第一筆後，學生與時數會顯示在這裡')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '尚無指定課' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '進行中' })).not.toBeInTheDocument()
     expect(screen.queryByText('選擇學生查看指定課時數')).not.toBeInTheDocument()
 
