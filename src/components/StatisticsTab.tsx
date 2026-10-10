@@ -14,7 +14,7 @@ import { useToast } from './ui'
 import { DateRangePicker } from './DateRangePicker'
 import { designSystem, getCardStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { AdminPillButton, AdminPillRow } from './AdminPageLayout'
-import { ProductSalesStatistics } from './ProductSalesStatistics'
+import { PerformanceStatistics } from './PerformanceStatistics'
 
 interface CoachStats {
   coachId: string
@@ -45,6 +45,32 @@ interface ParticipantInfo {
   lessonType: string
 }
 
+interface TeachingRecord {
+  id: number
+  coach_id: string
+  duration_min: number | null
+  participant_name: string | null
+  lesson_type: string
+  bookings: {
+    id: number
+    start_at: string
+    duration_min: number | null
+    contact_name: string | null
+    boats: { name: string } | null
+  }
+  coaches: { name: string } | null
+  members: { name: string; nickname: string | null } | null
+}
+
+interface DrivingRecord {
+  id: number
+  booking_id: number
+  coach_id: string
+  driver_duration_min: number | null
+  bookings: TeachingRecord['bookings']
+  coaches: { name: string } | null
+}
+
 interface StatisticsTabProps {
   isMobile: boolean
   autoFilterCoachId?: string // 自动筛选特定教练（用于教练专用页面）
@@ -52,7 +78,7 @@ interface StatisticsTabProps {
 
 export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProps) {
   const toast = useToast()
-  const [reportKind, setReportKind] = useState<'service' | 'product-sales'>('service')
+  const [reportKind, setReportKind] = useState<'service' | 'performance'>('service')
   // 如果是教練專用模式，預設顯示本月；否則顯示今天
   const [selectedDate, setSelectedDate] = useState(() => {
     if (autoFilterCoachId) {
@@ -75,11 +101,14 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   }, [autoFilterCoachId])
 
   useEffect(() => {
+    if (reportKind !== 'service') return
     // 換條件時先清空，避免新資料載入前畫面殘留前條件的統計數字
     setAllCoachStats([])
     setCoachStats([])
     loadPastData()
-  }, [selectedDate, selectedCoachId])
+    // loadPastData reads exactly the filter state listed here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportKind, selectedDate, selectedCoachId])
 
   const loadPastData = async () => {
     if (!selectedDate) return
@@ -102,8 +131,8 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       }
 
       // 1. 載入教學記錄
-      const teachingData = await fetchAllPaginated<any>(async (from, to) => {
-        return supabase
+      const teachingData = await fetchAllPaginated<TeachingRecord>(async (from, to) => {
+        const { data, error } = await supabase
           .from('booking_participants')
           .select(`
           *,
@@ -121,11 +150,12 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           .lte('bookings.start_at', `${endDateStr}T23:59:59`)
           .order('id', { ascending: true })
           .range(from, to)
+        return { data: data as unknown as TeachingRecord[] | null, error }
       })
 
       // 2. 載入駕駛記錄
-      const drivingData = await fetchAllPaginated<any>(async (from, to) => {
-        return supabase
+      const drivingData = await fetchAllPaginated<DrivingRecord>(async (from, to) => {
+        const { data, error } = await supabase
           .from('coach_reports')
           .select(`
           *,
@@ -139,13 +169,14 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           .lte('bookings.start_at', `${endDateStr}T23:59:59`)
           .order('id', { ascending: true })
           .range(from, to)
+        return { data: data as unknown as DrivingRecord[] | null, error }
       })
 
       // 3. 整理數據
       const coachMap = new Map<string, CoachStats>()
 
       // 處理教學記錄
-      teachingData?.forEach((record: any) => {
+      teachingData.forEach((record) => {
         const coachId = record.coach_id
         const coachName = record.coaches?.name || '未知'
         
@@ -191,7 +222,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       })
 
       // 處理駕駛記錄
-      drivingData?.forEach((record: any) => {
+      drivingData.forEach((record) => {
         const coachId = record.coach_id
         const coachName = record.coaches?.name || '未知'
         
@@ -228,7 +259,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           stats.details.push(detail)
         }
 
-        detail.driverDuration = record.driver_duration_min
+        detail.driverDuration = record.driver_duration_min ?? undefined
       })
 
       // 計算總時數並排序
@@ -283,22 +314,22 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
         教學／駕駛
       </AdminPillButton>
       <AdminPillButton
-        active={reportKind === 'product-sales'}
-        onClick={() => setReportKind('product-sales')}
+        active={reportKind === 'performance'}
+        onClick={() => setReportKind('performance')}
         data-track={autoFilterCoachId
-          ? 'coach_report_product_sales_open'
-          : 'admin_statistics_product_sales_open'}
+          ? 'coach_report_performance_open'
+          : 'admin_statistics_performance_open'}
       >
-        商品銷售
+        業績
       </AdminPillButton>
     </AdminPillRow>
   )
 
-  if (reportKind === 'product-sales') {
+  if (reportKind === 'performance') {
     return (
       <div>
         {reportKindToggle}
-        <ProductSalesStatistics isMobile={isMobile} coachId={autoFilterCoachId} />
+        <PerformanceStatistics isMobile={isMobile} coachId={autoFilterCoachId} />
       </div>
     )
   }

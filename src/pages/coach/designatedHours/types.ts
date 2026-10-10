@@ -45,6 +45,19 @@ export interface CoachDesignatedEligibleReport {
   boat_name: string | null
 }
 
+export interface CoachDesignatedCreditReportEntry {
+  id: number
+  coach_id: string
+  coach_name: string
+  member_id: string
+  member_name: string
+  regular_minutes: number
+  gift_minutes: number
+  total_minutes: number
+  occurred_at: string
+  note: string | null
+}
+
 /** Legacy FIFO view helpers retained for historical tests and old saved links. */
 export interface CoachDesignatedBatchAllocation {
   entry: CoachDesignatedEntry

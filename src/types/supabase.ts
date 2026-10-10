@@ -2063,6 +2063,14 @@ export type Database = {
         Args: { p_coach_id: string; p_member_id: string }
         Returns: Json
       }
+      get_coach_designated_credit_report: {
+        Args: {
+          p_coach_id?: string | null
+          p_end_at: string
+          p_start_at: string
+        }
+        Returns: Json
+      }
       get_coach_designated_member_context: {
         Args: {
           p_booking_participant_id?: number | null

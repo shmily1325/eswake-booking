@@ -2,6 +2,7 @@ import { supabase } from '../../../lib/supabase'
 import type { Json } from '../../../types/supabase'
 import type {
   AdminCoachDesignatedOverviewCoach,
+  CoachDesignatedCreditReportEntry,
   CoachDesignatedEligibleReport,
   CoachDesignatedEntry,
   CoachDesignatedStudent,
@@ -26,6 +27,22 @@ export async function fetchAdminCoachDesignatedOverview(): Promise<
   return unwrap(data, {
     coaches: [] as AdminCoachDesignatedOverviewCoach[],
   }).coaches
+}
+
+export async function fetchCoachDesignatedCreditReport(input: {
+  startAt: string
+  endAt: string
+  coachId?: string
+}): Promise<CoachDesignatedCreditReportEntry[]> {
+  const { data, error } = await supabase.rpc('get_coach_designated_credit_report', {
+    p_start_at: input.startAt,
+    p_end_at: input.endAt,
+    p_coach_id: input.coachId || null,
+  })
+  if (error) throw error
+  return unwrap(data, {
+    entries: [] as CoachDesignatedCreditReportEntry[],
+  }).entries
 }
 
 export async function fetchCoachDesignatedStudents(

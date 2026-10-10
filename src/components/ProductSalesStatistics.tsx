@@ -1,18 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { getLocalDateString } from '../utils/date'
-import {
-  designSystem,
-  getCardStyle,
-  getFontSize,
-  getInputStyle,
-  getLabelStyle,
-} from '../styles/designSystem'
-import { DateRangePicker } from './DateRangePicker'
+import { fetchAllInBatches, fetchAllPaginated } from '../utils/supabasePaginate'
+import { designSystem, getFontSize } from '../styles/designSystem'
 
 interface Props {
   isMobile: boolean
-  coachId?: string
+  selectedDate: string
+  selectedCoachId: string
 }
 
 interface SnapshotLine {
@@ -126,36 +120,32 @@ export function buildSalespersonGroups(
     .sort((a, b) => b.total - a.total || b.qty - a.qty || a.name.localeCompare(b.name))
 }
 
-export function ProductSalesStatistics({ isMobile, coachId }: Props) {
-  const [selectedDate, setSelectedDate] = useState(() =>
-    coachId ? getLocalDateString().slice(0, 7) : getLocalDateString(),
-  )
-  const [selectedCoachId, setSelectedCoachId] = useState(coachId ?? 'all')
+export function ProductSalesStatistics({ isMobile, selectedDate, selectedCoachId }: Props) {
   const [groups, setGroups] = useState<SalespersonGroup[]>([])
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (coachId) setSelectedCoachId(coachId)
-  }, [coachId])
-
-  useEffect(() => {
     let cancelled = false
     const load = async () => {
       setLoading(true)
       setError(null)
+      setGroups([])
+      setExpandedGroupIds(new Set())
       try {
         const range = dateRange(selectedDate)
-        const { data: settlementData, error: settlementError } = await supabase
-          .from('shop_order_settlements')
-          .select('id, amount_total, settled_at, items_snapshot, order:shop_orders(order_no, contact_name, cancelled_at)')
-          .gte('settled_at', `${range.start}T00:00:00`)
-          .lte('settled_at', `${range.end}T23:59:59`)
-          .order('settled_at', { ascending: false })
-        if (settlementError) throw settlementError
-
-        const settlements = (settlementData ?? [])
+        const settlementData = await fetchAllPaginated<SettlementRow>(async (from, to) => {
+          const { data, error } = await supabase
+            .from('shop_order_settlements')
+            .select('id, amount_total, settled_at, items_snapshot, order:shop_orders(order_no, contact_name, cancelled_at)')
+            .gte('settled_at', `${range.start}T00:00:00`)
+            .lte('settled_at', `${range.end}T23:59:59`)
+            .order('settled_at', { ascending: false })
+            .range(from, to)
+          return { data: data as unknown as SettlementRow[] | null, error }
+        })
+        const settlements = settlementData
           .map((row) => row as unknown as SettlementRow)
           .filter((row) => !row.order?.cancelled_at)
         const itemIds = [...new Set(
@@ -163,18 +153,28 @@ export function ProductSalesStatistics({ isMobile, coachId }: Props) {
         )]
         const meta = new Map<string, ItemMeta>()
         if (itemIds.length > 0) {
-          const { data: itemData, error: itemError } = await supabase
-            .from('shop_order_items')
-            .select(`
+          const itemData = await fetchAllInBatches<{
+            id: string
+            salesperson_coach_id: string | null
+            salesperson_name_snapshot: string | null
+            variant: {
+              vendor_code: string | null
+              product: { brand: string; model: string; model_year: number | null } | null
+            } | null
+          }, string>(
+            'shop_order_items',
+            `
               id, salesperson_coach_id, salesperson_name_snapshot,
               variant:product_variants(
                 vendor_code,
                 product:products(brand, model, model_year)
               )
-            `)
-            .in('id', itemIds)
-          if (itemError) throw itemError
-          for (const raw of itemData ?? []) {
+            `,
+            'id',
+            itemIds,
+            'id',
+          )
+          for (const raw of itemData) {
             const row = raw as unknown as {
               id: string
               salesperson_coach_id: string | null
@@ -194,7 +194,11 @@ export function ProductSalesStatistics({ isMobile, coachId }: Props) {
             })
           }
         }
-        if (!cancelled) setGroups(buildSalespersonGroups(settlements, meta, coachId))
+        const coachFilter = selectedCoachId === 'all' ? undefined : selectedCoachId
+        if (!cancelled) {
+          setGroups(buildSalespersonGroups(settlements, meta, coachFilter))
+          setExpandedGroupIds(new Set())
+        }
       } catch (cause) {
         if (!cancelled) {
           setGroups([])
@@ -208,14 +212,9 @@ export function ProductSalesStatistics({ isMobile, coachId }: Props) {
     return () => {
       cancelled = true
     }
-  }, [coachId, selectedDate])
+  }, [selectedCoachId, selectedDate])
 
-  const visibleGroups = useMemo(
-    () => selectedCoachId === 'all'
-      ? groups
-      : groups.filter((group) => group.id === selectedCoachId),
-    [groups, selectedCoachId],
-  )
+  const visibleGroups = groups
   const summary = useMemo(
     () => visibleGroups.reduce(
       (sum, group) => ({ qty: sum.qty + group.qty, total: sum.total + group.total }),
@@ -223,7 +222,6 @@ export function ProductSalesStatistics({ isMobile, coachId }: Props) {
     ),
     [visibleGroups],
   )
-  const coachOptions = groups.filter((group) => group.id !== 'unassigned')
   const assignedGroups = visibleGroups.filter((group) => group.id !== 'unassigned')
   const unassignedGroup = visibleGroups.find((group) => group.id === 'unassigned')
   const maxAssignedTotal = Math.max(1, ...assignedGroups.map((group) => group.total))
@@ -238,54 +236,20 @@ export function ProductSalesStatistics({ isMobile, coachId }: Props) {
 
   return (
     <div>
-      <div style={{
-        ...getCardStyle(isMobile),
-        marginBottom: isMobile ? 16 : 24,
+      <h2 style={{
+        margin: '0 0 4px',
+        fontSize: getFontSize('h3', isMobile),
+        color: designSystem.colors.text.primary,
       }}>
-        <div style={{ marginBottom: coachId ? 0 : isMobile ? 16 : 20 }}>
-          <DateRangePicker
-            selectedDate={selectedDate}
-            onDateChange={(next) => {
-              setSelectedDate(next)
-              setExpandedGroupIds(new Set())
-            }}
-            isMobile={isMobile}
-            showTodayButton={!isMobile}
-            label="查詢期間"
-            simplified
-            trackPrefix={coachId
-              ? 'coach_report_product_sales_period'
-              : 'admin_statistics_product_sales_period'}
-          />
-        </div>
-
-        {!coachId && (
-          <div>
-            <label style={getLabelStyle(isMobile)}>篩選教練</label>
-            <select
-              value={selectedCoachId}
-              onChange={(event) => {
-                setSelectedCoachId(event.target.value)
-                setExpandedGroupIds(new Set())
-              }}
-              data-track="admin_statistics_product_sales_coach"
-              style={{
-                ...getInputStyle(isMobile),
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              <option value="all">全部教練</option>
-              {coachOptions.map((group) => (
-                <option key={group.id} value={group.id}>{group.name}</option>
-              ))}
-              {groups.some((group) => group.id === 'unassigned') && (
-                <option value="unassigned">未指定</option>
-              )}
-            </select>
-          </div>
-        )}
-      </div>
+        商品銷售
+      </h2>
+      <p style={{
+        margin: '0 0 14px',
+        fontSize: getFontSize('caption', isMobile),
+        color: designSystem.colors.text.disabled,
+      }}>
+        依結帳日計算
+      </p>
 
       {loading ? (
         <div style={{ padding: 32, textAlign: 'center', color: designSystem.colors.text.secondary }}>
@@ -406,7 +370,7 @@ export function ProductSalesStatistics({ isMobile, coachId }: Props) {
 
             {unassignedGroup && (
               <section>
-                {!coachId && (
+                {selectedCoachId === 'all' && (
                   <h3 style={{
                     margin: '0 0 10px',
                     fontSize: getFontSize('bodyLarge', isMobile),
