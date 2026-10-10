@@ -239,6 +239,7 @@ export function ProductSalesStatistics({ isMobile, selectedDate, selectedCoachId
       <h2 style={{
         margin: '0 0 4px',
         fontSize: getFontSize('h3', isMobile),
+        fontWeight: 600,
         color: designSystem.colors.text.primary,
       }}>
         商品銷售

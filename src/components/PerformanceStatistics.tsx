@@ -374,7 +374,7 @@ function DesignatedLessonStatistics({
             `${detail.minutes}分`,
             detail.hasTransaction || detail.settledWithoutTransaction
               ? detail.paymentMethod
-              : '未扣款／異常',
+              : '—',
           ]),
         }))}
       />
@@ -505,6 +505,7 @@ function PerformanceSection({
       <h2 style={{
         margin: '0 0 4px',
         fontSize: getFontSize('h3', isMobile),
+        fontWeight: 600,
         color: designSystem.colors.text.primary,
       }}>
         {title}
@@ -554,6 +555,7 @@ function StatusText({
     <div style={{
       padding: isMobile ? 24 : 32,
       textAlign: 'center',
+      fontSize: getFontSize('body', isMobile),
       color: danger ? designSystem.colors.danger[700] : designSystem.colors.text.secondary,
     }}>
       {children}
@@ -579,12 +581,25 @@ function MinutesComparison({
       border: `1px solid ${designSystem.colors.border.light}`,
       borderRadius: designSystem.borderRadius.lg,
     }}>
-      <h3 style={{ margin: '0 0 14px', fontSize: getFontSize('h3', isMobile) }}>{title}</h3>
+      <h3 style={{
+        margin: '0 0 14px',
+        fontSize: getFontSize('h3', isMobile),
+        fontWeight: 600,
+        color: designSystem.colors.text.primary,
+      }}>
+        {title}
+      </h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {rows.map((row) => (
           <div key={row.id}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 4 }}>
-              <strong>{row.name}</strong>
+              <strong style={{
+                fontSize: getFontSize('body', isMobile),
+                fontWeight: 600,
+                color: designSystem.colors.text.primary,
+              }}>
+                {row.name}
+              </strong>
               <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
                 {row.detail}
               </span>
@@ -665,7 +680,17 @@ function PerformanceGroupList({
               }}
             >
               <span>
-                {showCoachName && <strong style={{ display: 'block', marginBottom: 4 }}>{group.name}</strong>}
+                {showCoachName && (
+                  <strong style={{
+                    display: 'block',
+                    marginBottom: 4,
+                    fontSize: getFontSize('body', isMobile),
+                    fontWeight: 600,
+                    color: designSystem.colors.text.primary,
+                  }}>
+                    {group.name}
+                  </strong>
+                )}
                 <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
                   {group.summary}
                 </span>
@@ -687,6 +712,7 @@ function PerformanceGroupList({
                             padding: 8,
                             textAlign: 'left',
                             whiteSpace: 'nowrap',
+                            fontWeight: 600,
                             color: designSystem.colors.text.secondary,
                             borderBottom: `1px solid ${designSystem.colors.border.light}`,
                           }}
