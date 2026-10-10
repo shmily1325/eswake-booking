@@ -93,7 +93,7 @@ export function ClearableSearchInput({
           ...inputStyle,
           width: '100%',
           boxSizing: 'border-box',
-          paddingLeft: searchIconVisible ? (isMobile ? 48 : 40) : undefined,
+          paddingLeft: showSearchIcon ? (isMobile ? 48 : 40) : undefined,
           paddingRight: value ? (isMobile ? 52 : 42) : undefined,
         }}
       />

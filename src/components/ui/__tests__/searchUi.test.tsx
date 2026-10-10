@@ -62,6 +62,31 @@ describe('ClearableSearchInput', () => {
 
     expect(container.querySelector('svg')).toBeNull()
   })
+
+  it('keeps the input text aligned when the search icon disappears', () => {
+    const { rerender } = render(
+      <ClearableSearchInput
+        value=""
+        onValueChange={() => undefined}
+        isMobile
+        aria-label="搜尋會員"
+      />
+    )
+    const input = screen.getByRole('textbox', { name: '搜尋會員' })
+
+    expect(input).toHaveStyle({ paddingLeft: '48px' })
+
+    rerender(
+      <ClearableSearchInput
+        value="pe"
+        onValueChange={() => undefined}
+        isMobile
+        aria-label="搜尋會員"
+      />
+    )
+
+    expect(input).toHaveStyle({ paddingLeft: '48px' })
+  })
 })
 
 describe('HighlightedText', () => {
