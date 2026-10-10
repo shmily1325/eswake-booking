@@ -338,7 +338,7 @@ function DesignatedLessonStatistics({
   return (
     <PerformanceSection
       title="指定課單堂"
-      subtitle="依上課日計算；收費方式以回報及指定課扣款紀錄為準"
+      subtitle="依上課日；僅計指定需收費"
       isMobile={isMobile}
       loading={loading}
       error={error}
@@ -436,7 +436,7 @@ function DesignatedCreditStatistics({
   return (
     <PerformanceSection
       title="指定課售出時數"
-      subtitle="依新增日計算；取消的時數不列入"
+      subtitle="依新增日"
       isMobile={isMobile}
       loading={loading}
       error={error}
