@@ -183,9 +183,9 @@ export function AdminCoachDesignatedDeductionControl({
         {deduct && (
           <>
             <label style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
-              一般（剩 {regularBalance}）
+              指定課（剩 {regularBalance}）
               <input
-                aria-label="管理員修正一般指定課扣除分鐘"
+                aria-label="管理員修正指定課扣除分鐘"
                 type="text"
                 inputMode="numeric"
                 value={regularMinutes || ''}

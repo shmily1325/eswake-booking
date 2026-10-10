@@ -14,7 +14,9 @@ export interface CoachDesignatedShareInput {
   rows: CoachDesignatedShareRow[]
 }
 
-const ROWS_PER_IMAGE = 12
+const ROWS_PER_IMAGE = 8
+const ROW_HEIGHT = 118
+const NOTE_HEIGHT = 52
 const WIDTH = 1170
 
 export function paginateCoachDesignatedRows(
@@ -105,8 +107,8 @@ export async function createCoachDesignatedShareImages(
     const height = 400
       + headerNoteHeight
       + openingHeight
-      + pageRows.length * 106
-      + noteCount * 44
+      + pageRows.length * ROW_HEIGHT
+      + noteCount * NOTE_HEIGHT
     const canvas = document.createElement('canvas')
     canvas.width = WIDTH
     canvas.height = height
@@ -124,7 +126,7 @@ export async function createCoachDesignatedShareImages(
     context.fillText(fitText(context, input.title, WIDTH - 128), 64, 145)
     if (input.headerNote) {
       context.fillStyle = input.headerNote.includes('已逾使用期限') ? '#a23f3f' : '#8b919b'
-      context.font = '400 27px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.font = '400 32px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
       context.fillText(fitText(context, input.headerNote, WIDTH - 128), 64, 184)
     }
 
@@ -152,23 +154,23 @@ export async function createCoachDesignatedShareImages(
         context.stroke()
       }
       context.fillStyle = '#4b5563'
-      context.font = '400 32px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.font = '400 36px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
       context.fillText(row.date, 112, y)
       context.fillStyle = '#1d1d1f'
-      context.font = '500 34px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.font = '500 38px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
       context.fillText(fitText(context, row.detail, 560), 350, y)
       context.textAlign = 'right'
       context.fillStyle = row.minutes >= 0 ? '#2f6f50' : '#a23f3f'
-      context.font = '700 36px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+      context.font = '700 40px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
       context.fillText(`${row.minutes >= 0 ? '+' : '−'}${Math.abs(row.minutes)}`, WIDTH - 112, y)
       context.textAlign = 'left'
       if (row.note) {
         context.fillStyle = row.note.includes('已逾使用期限') ? '#a23f3f' : '#8b919b'
-        context.font = '400 27px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
-        context.fillText(fitText(context, row.note, WIDTH - 462), 350, y + 42)
-        y += 44
+        context.font = '400 32px -apple-system, BlinkMacSystemFont, "PingFang TC", sans-serif'
+        context.fillText(fitText(context, row.note, WIDTH - 462), 350, y + 46)
+        y += NOTE_HEIGHT
       }
-      y += 106
+      y += ROW_HEIGHT
     })
 
     context.strokeStyle = '#e5e7eb'

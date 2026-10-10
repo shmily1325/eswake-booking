@@ -189,7 +189,7 @@ export function CoachDesignatedDeductionControl({
             ? '載入中'
             : loadError
               ? '無法載入'
-              : `剩 ${balance} 分${giftBalance !== 0 ? `（一般 ${regularBalance}・贈送 ${giftBalance}）` : ''}｜${deduct ? `本次扣 ${minutes} 分` : '本次不扣'} ${expanded ? '收合' : '展開'}`}
+              : `剩 ${balance} 分${giftBalance !== 0 ? `（指定課 ${regularBalance}・贈送 ${giftBalance}）` : ''}｜${deduct ? `本次扣 ${minutes} 分` : '本次不扣'} ${expanded ? '收合' : '展開'}`}
         </span>
       </button>
 
@@ -235,7 +235,7 @@ export function CoachDesignatedDeductionControl({
                       flex: 1,
                     }}
                   >
-                    一般 {regularBalance} 分
+                    指定課 {regularBalance} 分
                   </button>
                   <button
                     type="button"
@@ -253,11 +253,11 @@ export function CoachDesignatedDeductionControl({
               {split ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <label style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
-                    一般
+                    指定課
                     <input
                       type="text"
                       inputMode="numeric"
-                      aria-label="一般指定課扣除分鐘"
+                      aria-label="指定課扣除分鐘"
                       value={regularMinutes || ''}
                       onChange={(event) => setAllocation(
                         Number(event.target.value.replace(/\D/g, '')) || 0,
@@ -329,7 +329,7 @@ export function CoachDesignatedDeductionControl({
                 扣除後總剩餘 {after} 分鐘
                 {showGift && (
                   <span>
-                    {' '}（一般 {regularBalance - regularMinutes}・贈送 {giftBalance - giftMinutes}）
+                    {' '}（指定課 {regularBalance - regularMinutes}・贈送 {giftBalance - giftMinutes}）
                   </span>
                 )}
               </div>

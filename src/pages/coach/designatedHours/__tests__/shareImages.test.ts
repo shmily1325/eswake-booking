@@ -14,9 +14,9 @@ function rows(count: number): CoachDesignatedShareRow[] {
 }
 
 describe('designated-hour share images', () => {
-  it('keeps one empty page and splits long histories every 12 rows', () => {
+  it('keeps one empty page and splits long histories every 8 rows for mobile readability', () => {
     expect(paginateCoachDesignatedRows([])).toEqual([[]])
-    expect(paginateCoachDesignatedRows(rows(25)).map((page) => page.length)).toEqual([12, 12, 1])
+    expect(paginateCoachDesignatedRows(rows(25)).map((page) => page.length)).toEqual([8, 8, 8, 1])
   })
 
   it('creates a safe, numbered PNG filename', () => {

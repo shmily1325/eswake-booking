@@ -78,7 +78,7 @@ function formatImageRange(startDate: string, endDate: string): string {
 function entryTypeLabel(entry: CoachDesignatedEntry): string {
   const regular = entry.regular_minutes ?? entry.minutes
   const gift = entry.gift_minutes ?? 0
-  if (regular > 0 && gift > 0) return `一般 ${regular}・贈送 ${gift}`
+  if (regular > 0 && gift > 0) return `指定課 ${regular}・贈送 ${gift}`
   if (gift > 0) return '贈送'
   return entry.entry_type === 'credit' ? '指定課' : ''
 }
@@ -110,7 +110,7 @@ function studentExpirySummary(student: CoachDesignatedStudent): Array<{
     regular
       ? {
           key: 'regular',
-          text: `一般｜${regular < today ? '已逾使用期限' : '使用期限'} ${regular.replaceAll('-', '/')}`,
+          text: `指定課｜${regular < today ? '已逾使用期限' : '使用期限'} ${regular.replaceAll('-', '/')}`,
           expired: regular < today,
           gift: false,
         }
@@ -664,7 +664,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
     batch: CoachDesignatedBatch,
     source: 'regular' | 'gift',
   ) => {
-    const label = source === 'gift' ? '贈送指定課' : '一般指定課'
+    const label = source === 'gift' ? '贈送指定課' : '指定課'
     const rows: CoachDesignatedShareRow[] = batch.allocations.map((allocation) => ({
       date: compactDate(
         allocation.entry.booking_start_at || allocation.entry.occurred_at,
@@ -794,7 +794,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                     fontSize: getFontSize('bodySmall', isMobile),
                   }}
                 >
-                  一般 {student.regular_balance ?? student.balance} 分
+                  指定課 {student.regular_balance ?? student.balance} 分
                 </span>
                 {(student.has_gift_entries || (student.gift_balance ?? 0) !== 0) && (
                   <span
@@ -877,7 +877,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: hasGiftEntries || giftBalance !== 0 ? '1fr 1fr' : '1fr', gap: 10, marginTop: 12 }}>
           <BalanceSummary
-            label="一般指定課"
+            label="指定課"
             balance={regularBalance}
             expiresOn={regularExpiresOn}
             tone="regular"
@@ -1063,7 +1063,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                         color: designSystem.colors.info[700],
                       }}
                     >
-                      <span>一般指定課分批</span>
+                      <span>指定課分批</span>
                       <span aria-hidden>›</span>
                     </button>
                   )}
@@ -1176,7 +1176,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
             ) : (
               <>
                 <ImageDialogHeader
-                  title={imageView === 'gift' ? '贈送指定課分批' : '一般指定課分批'}
+                  title={imageView === 'gift' ? '贈送指定課分批' : '指定課分批'}
                   isMobile={isMobile}
                   onBack={() => setImageView('menu')}
                   onClose={() => {
@@ -1351,7 +1351,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
               style={getInputStyle(isMobile)}
             />
             <div style={{ height: 12 }} />
-            <label style={getLabelStyle(isMobile)}>一般指定課分鐘</label>
+            <label style={getLabelStyle(isMobile)}>指定課分鐘</label>
             <input
               type="text"
               inputMode="numeric"
@@ -1416,7 +1416,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                 fontSize: getFontSize('bodySmall', isMobile),
               }}
             >
-              {displayName(selectedStudent)}｜一般 {regularBalance} 分
+              {displayName(selectedStudent)}｜指定課 {regularBalance} 分
               {(hasGiftEntries || giftBalance !== 0) && `・贈送 ${giftBalance} 分`}
             </div>
 
@@ -1533,9 +1533,9 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                             }}
                           >
                             <label style={{ fontSize: getFontSize('bodySmall', isMobile) }}>
-                              一般
+                              指定課
                               <input
-                                aria-label={`一般指定課扣除分鐘，預約 ${report.duration_min} 分`}
+                                aria-label={`指定課扣除分鐘，預約 ${report.duration_min} 分`}
                                 type="text"
                                 inputMode="numeric"
                                 value={selectedReportRegularMinutes[report.participant_id] ?? ''}
@@ -1656,7 +1656,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                     </strong>
                     {(hasGiftEntries || giftBalance !== 0) && (
                       <div style={{ color: designSystem.colors.text.secondary }}>
-                        一般 {regularBalance - selectedDeductionSummary.regular} 分・贈送 {giftBalance - selectedDeductionSummary.gift} 分
+                        指定課 {regularBalance - selectedDeductionSummary.regular} 分・贈送 {giftBalance - selectedDeductionSummary.gift} 分
                       </div>
                     )}
                   </>
@@ -1710,7 +1710,7 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
                 <div style={{ height: 12 }} />
               </>
             )}
-            <label style={getLabelStyle(isMobile)}>一般指定課分鐘</label>
+            <label style={getLabelStyle(isMobile)}>指定課分鐘</label>
             <input
               inputMode="numeric"
               value={editRegularMinutes}
@@ -1751,11 +1751,11 @@ export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHours
             >
               修改後剩餘：<strong style={{ color: designSystem.colors.text.primary }}>{balanceAfterEdit} 分</strong>
               <div style={{ marginTop: 4, fontSize: getFontSize('bodySmall', isMobile) }}>
-                一般 {regularAfterEdit} 分・贈送 {giftAfterEdit} 分
+                指定課 {regularAfterEdit} 分・贈送 {giftAfterEdit} 分
               </div>
               <div style={{ marginTop: 4, fontSize: getFontSize('bodySmall', isMobile) }}>
                 若取消此筆，總剩餘為 {balanceAfterVoid} 分
-                （一般 {regularAfterVoid}・贈送 {giftAfterVoid}）
+                （指定課 {regularAfterVoid}・贈送 {giftAfterVoid}）
               </div>
               {editingEntry.entry_type === 'report_deduction'
                 && editingEntry.duration_min

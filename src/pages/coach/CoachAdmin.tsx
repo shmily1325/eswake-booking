@@ -6,7 +6,6 @@ import { isAdmin } from '../../utils/auth'
 import { Footer } from '../../components/Footer'
 import { StatisticsTab } from '../../components/StatisticsTab'
 import { PendingDeductionItem } from '../../components/PendingDeductionItem'
-import { AdminCoachDesignatedDeductionControl } from '../../components/AdminCoachDesignatedDeductionControl'
 import { DeductionDetails } from '../../components/DeductionDetails'
 import { DateRangePicker } from '../../components/DateRangePicker'
 import { useResponsive } from '../../hooks/useResponsive'
@@ -1288,14 +1287,6 @@ export function CoachAdmin() {
                                           paymentMethod={record.payment_method}
                                           notes={record.notes}
                                         />
-                                        <AdminCoachDesignatedDeductionControl
-                                          participantId={record.id}
-                                          coachId={record.coach_id}
-                                          memberId={record.member_id}
-                                          lessonType={record.lesson_type}
-                                          durationMin={record.duration_min}
-                                          isMobile={isMobile}
-                                        />
                                       </div>
                                     ))}
                                   </div>
@@ -1362,14 +1353,6 @@ export function CoachAdmin() {
                                                     transactions={p.transactions || []}
                                                     paymentMethod={p.payment_method}
                                                     notes={p.notes}
-                                                  />
-                                                  <AdminCoachDesignatedDeductionControl
-                                                    participantId={p.id}
-                                                    coachId={p.coach_id}
-                                                    memberId={p.member_id}
-                                                    lessonType={p.lesson_type}
-                                                    durationMin={p.duration_min}
-                                                    isMobile={isMobile}
                                                   />
                                                 </div>
                                               ))}

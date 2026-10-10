@@ -108,7 +108,7 @@ describe('AdminCoachDesignatedDeductionControl', () => {
 
     fireEvent.click(screen.getByText('修正'))
     await screen.findByText(/剩餘 330 分/)
-    fireEvent.change(screen.getByLabelText('管理員修正一般指定課扣除分鐘'), {
+    fireEvent.change(screen.getByLabelText('管理員修正指定課扣除分鐘'), {
       target: { value: '15' },
     })
     fireEvent.change(screen.getByLabelText('管理員修正贈送指定課扣除分鐘'), {

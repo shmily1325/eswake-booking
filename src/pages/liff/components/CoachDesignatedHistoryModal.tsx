@@ -143,7 +143,7 @@ export function CoachDesignatedHistoryModal({
           <>
           {hasSplitSummary && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-              {balanceRow('一般指定課', regularBalance, regularExpiresOn, 'regular')}
+              {balanceRow('指定課', regularBalance, regularExpiresOn, 'regular')}
               {(hasGiftEntries || giftBalance !== 0 || giftExpiresOn) && balanceRow(
                 '贈送指定課',
                 giftBalance,
@@ -158,10 +158,10 @@ export function CoachDesignatedHistoryModal({
               const regular = entry.regular_minutes ?? entry.minutes
               const gift = entry.gift_minutes ?? 0
               const source = regular > 0 && gift > 0
-                ? `一般 ${regular}・贈送 ${gift}`
+                ? `指定課 ${regular}・贈送 ${gift}`
                 : gift > 0
                   ? '贈送'
-                  : '一般'
+                  : '指定課'
               const occurredAt = entry.booking_start_at || entry.occurred_at
               const displayDate = entry.entry_type === 'credit'
                 ? entry.occurred_at.slice(0, 10).replaceAll('-', '/')

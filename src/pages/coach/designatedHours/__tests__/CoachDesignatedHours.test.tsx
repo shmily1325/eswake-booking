@@ -153,7 +153,7 @@ describe('CoachDesignatedHours', () => {
     fireEvent.click(screen.getByRole('button', { name: '補扣指定課' }))
     await screen.findByText(/2026-10-04 10:00 · G21 · 30 分/)
     fireEvent.click(screen.getByRole('checkbox'))
-    fireEvent.change(screen.getByLabelText('一般指定課扣除分鐘，預約 30 分'), {
+    fireEvent.change(screen.getByLabelText('指定課扣除分鐘，預約 30 分'), {
       target: { value: '20' },
     })
     fireEvent.change(screen.getByLabelText('贈送指定課扣除分鐘，預約 30 分'), {
