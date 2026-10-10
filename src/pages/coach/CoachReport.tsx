@@ -74,6 +74,7 @@ interface CoachReportProps {
   autoFilterByUser?: boolean // 是否自動根據登入用戶篩選教練
   forcedCoachId?: string // 管理員暫時預覽指定教練
   embedded?: boolean // 是否嵌入在其他頁面中（隱藏 PageHeader）
+  hideFooter?: boolean // 外層頁面已提供 Footer
   defaultViewMode?: 'date' | 'unreported' // 預設視圖模式
   hideInternalTabs?: boolean // 是否隱藏內部的 tab 切換
 }
@@ -82,6 +83,7 @@ export function CoachReport({
   autoFilterByUser = false, 
   forcedCoachId,
   embedded = false,
+  hideFooter = false,
   defaultViewMode = 'unreported',
   hideInternalTabs = false
 }: CoachReportProps = {}) {
@@ -1429,7 +1431,7 @@ export function CoachReport({
         onSearchBlur={() => setActiveSearchIndex(null)}
       />
 
-      <Footer />
+      {!hideFooter && <Footer />}
       <ToastContainer messages={toast.messages} onClose={toast.closeToast} />
     </div>
   )

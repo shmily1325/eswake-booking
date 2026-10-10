@@ -2079,6 +2079,10 @@ export type Database = {
         Args: { p_coach_id: string }
         Returns: Json
       }
+      get_admin_coach_designated_overview: {
+        Args: Record<string, never>
+        Returns: Json
+      }
       get_liff_coach_designated_balances: {
         Args: { p_line_user_id: string }
         Returns: Json

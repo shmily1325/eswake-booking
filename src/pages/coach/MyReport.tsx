@@ -12,10 +12,12 @@ import { AdminPillRow, AdminPillButton } from '../../components/AdminPageLayout'
 import { designSystem, getFontSize } from '../../styles/designSystem'
 import { PageShell } from '../../components/PageShell'
 import { CoachDesignatedHours } from './designatedHours/CoachDesignatedHours'
-import { getTemporaryCoachReportPreviewName } from '../../utils/auth'
+import { AdminCoachDesignatedHours } from './designatedHours/AdminCoachDesignatedHours'
+import { getTemporaryCoachReportPreviewName, isAdmin } from '../../utils/auth'
 
 export function MyReport() {
   const user = useAuthUser()
+  const admin = isAdmin(user)
   const { isMobile } = useResponsive()
   const toast = useToast()
   
@@ -37,11 +39,17 @@ export function MyReport() {
       query = previewCoachName
         ? query.eq('name', previewCoachName)
         : query.eq('user_email', user.email)
-      const { data, error } = await query.single()
+      const { data, error } = await query.maybeSingle()
 
-      if (error || !data) {
+      if (error) {
         console.error('載入教練資訊失敗:', error)
         toast.error('載入失敗，請重新整理頁面')
+        setCheckingAuth(false)
+        return
+      }
+
+      if (!data) {
+        if (!admin) toast.error('找不到對應的教練資料')
         setCheckingAuth(false)
         return
       }
@@ -51,7 +59,7 @@ export function MyReport() {
     }
 
     loadCoachInfo()
-  }, [toast, user?.email])
+  }, [admin, toast, user?.email])
 
 
   // 檢查權限中
@@ -152,8 +160,10 @@ export function MyReport() {
             <CoachRecords coachId={coachId} isMobile={isMobile} />
           )}
 
-          {activeTab === 'designated' && coachId && (
-            <CoachDesignatedHours coachId={coachId} isMobile={isMobile} />
+          {activeTab === 'designated' && (admin || coachId) && (
+            admin
+              ? <AdminCoachDesignatedHours isMobile={isMobile} />
+              : <CoachDesignatedHours coachId={coachId!} isMobile={isMobile} />
           )}
         </div>
     </PageShell>

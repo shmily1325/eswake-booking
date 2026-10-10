@@ -86,7 +86,7 @@ describe('LIFF coach designated hours', () => {
     expect(screen.getByText('Jerry 指定課明細')).toBeInTheDocument()
     expect(screen.getByText('G21')).toBeInTheDocument()
     expect(screen.getByText('2026-10-04 10:00')).toBeInTheDocument()
-    expect(screen.getByText('一般 15・贈送 15')).toBeInTheDocument()
+    expect(screen.getByText('指定課 15・贈送 15')).toBeInTheDocument()
     expect(screen.getByText('最近一筆｜已逾使用期限 2026/10/01')).toBeInTheDocument()
     expect(screen.queryByText(/編輯|儲存/)).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('查看全部紀錄'))

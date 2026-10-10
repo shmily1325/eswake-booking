@@ -1,6 +1,7 @@
 import { supabase } from '../../../lib/supabase'
 import type { Json } from '../../../types/supabase'
 import type {
+  AdminCoachDesignatedOverviewCoach,
   CoachDesignatedEligibleReport,
   CoachDesignatedEntry,
   CoachDesignatedStudent,
@@ -15,6 +16,16 @@ function unwrap<T>(data: unknown, fallback: T): T {
   const result = (data || {}) as RpcResult<T>
   if (result.success === false) throw new Error(result.error || '指定課資料處理失敗')
   return Object.assign(fallback as object, result) as T
+}
+
+export async function fetchAdminCoachDesignatedOverview(): Promise<
+  AdminCoachDesignatedOverviewCoach[]
+> {
+  const { data, error } = await supabase.rpc('get_admin_coach_designated_overview')
+  if (error) throw error
+  return unwrap(data, {
+    coaches: [] as AdminCoachDesignatedOverviewCoach[],
+  }).coaches
 }
 
 export async function fetchCoachDesignatedStudents(

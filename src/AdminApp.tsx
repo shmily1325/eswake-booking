@@ -13,6 +13,7 @@ const DayView = lazy(() => import('./pages/DayView').then(module => ({ default: 
 const SearchPage = lazy(() => import('./pages/SearchPage').then(module => ({ default: module.SearchPage })))
 const SearchBookings = lazy(() => import('./pages/SearchBookings').then(module => ({ default: module.SearchBookings })))
 const CoachReport = lazy(() => import('./pages/coach/CoachReport').then(module => ({ default: module.CoachReport })))
+const AdminCoachReportWorkspace = lazy(() => import('./pages/coach/AdminCoachReportWorkspace').then(module => ({ default: module.AdminCoachReportWorkspace })))
 const MyReport = lazy(() => import('./pages/coach/MyReport').then(module => ({ default: module.MyReport })))
 const CoachAdmin = lazy(() => import('./pages/coach/CoachAdmin').then(module => ({ default: module.CoachAdmin })))
 const CoachAssignment = lazy(() => import('./pages/coach/CoachAssignment').then(module => ({ default: module.CoachAssignment })))
@@ -127,7 +128,7 @@ function AdminAppContent() {
             <Route path="/day" element={<DayView />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/search-bookings" element={<SearchBookings />} />
-            <Route path="/coach-report" element={<CoachReport />} />
+            <Route path="/coach-report" element={<AdminCoachReportWorkspace />} />
             <Route path="/my-report" element={<MyReport />} />
             <Route path="/my-report-detail" element={<CoachReport autoFilterByUser={true} />} />
             <Route path="/coach-admin" element={<CoachAdmin />} />

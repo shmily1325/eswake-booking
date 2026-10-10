@@ -22,7 +22,11 @@ const safeBackfillSql = readFileSync(
   resolve(process.cwd(), 'migrations/253_add_safe_designated_backfill.sql'),
   'utf8',
 )
-const combined = `${schemaSql}\n${rpcSql}\n${splitSql}\n${expirySummarySql}\n${safeBackfillSql}`.toLowerCase()
+const adminOverviewSql = readFileSync(
+  resolve(process.cwd(), 'migrations/254_admin_coach_designated_overview.sql'),
+  'utf8',
+)
+const combined = `${schemaSql}\n${rpcSql}\n${splitSql}\n${expirySummarySql}\n${safeBackfillSql}\n${adminOverviewSql}`.toLowerCase()
 
 describe('coach designated-hour migrations', () => {
   it('keeps the new ledger isolated from existing financial storage', () => {
@@ -121,5 +125,21 @@ describe('coach designated-hour migrations', () => {
     expect(safeBackfillSql).toMatch(
       /v_existing\.regular_minutes IS DISTINCT FROM v_regular_minutes[\s\S]*CONTINUE/i,
     )
+  })
+
+  it('returns every active coach in one admin-only overview without N+1 RPC calls', () => {
+    expect(adminOverviewSql).toContain('get_admin_coach_designated_overview')
+    expect(adminOverviewSql).toMatch(/WHERE c\.status = 'active'/i)
+    expect(adminOverviewSql).toMatch(/NOT public\.is_super_admin\(\)/i)
+    expect(adminOverviewSql).toMatch(
+      /CREATE OR REPLACE FUNCTION public\._can_manage_coach_designated_hours[\s\S]*public\.is_super_admin\(\)[\s\S]*c\.user_email/i,
+    )
+    expect(adminOverviewSql).not.toMatch(
+      /CREATE OR REPLACE FUNCTION public\._can_manage_coach_designated_hours[\s\S]*public\.is_allowed_staff\(\)/i,
+    )
+    expect(adminOverviewSql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.get_admin_coach_designated_overview\(\)[\s\S]*FROM PUBLIC, anon/i,
+    )
+    expect(adminOverviewSql).toContain("'students'")
   })
 })

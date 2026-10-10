@@ -13,6 +13,12 @@ export interface CoachDesignatedStudent {
   entry_count: number
 }
 
+export interface AdminCoachDesignatedOverviewCoach {
+  coach_id: string
+  coach_name: string
+  students: CoachDesignatedStudent[]
+}
+
 export interface CoachDesignatedEntry {
   id: number
   entry_type: 'credit' | 'report_deduction'

@@ -35,6 +35,7 @@ import type {
 interface CoachDesignatedHoursProps {
   coachId: string
   isMobile: boolean
+  initialMemberId?: string | null
 }
 
 type ListFilter = 'active' | 'used' | 'all'
@@ -154,11 +155,15 @@ function dialogSurface(isMobile: boolean): React.CSSProperties {
   }
 }
 
-export function CoachDesignatedHours({ coachId, isMobile }: CoachDesignatedHoursProps) {
+export function CoachDesignatedHours({
+  coachId,
+  isMobile,
+  initialMemberId = null,
+}: CoachDesignatedHoursProps) {
   const toast = useToast()
   const memberSearch = useMemberSearch()
   const [students, setStudents] = useState<CoachDesignatedStudent[]>([])
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(initialMemberId)
   const [entries, setEntries] = useState<CoachDesignatedEntry[]>([])
   const [balance, setBalance] = useState(0)
   const [regularBalance, setRegularBalance] = useState(0)
