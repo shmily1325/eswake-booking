@@ -120,6 +120,22 @@ describe('CoachDesignatedHours', () => {
     expect(screen.getAllByRole('button', { name: '新增指定課' })).toHaveLength(2)
   })
 
+  it('shows one mobile-friendly add action when the coach has no students', async () => {
+    mockedFetchStudents.mockResolvedValueOnce([])
+
+    render(<CoachDesignatedHours coachId="coach-empty" isMobile />)
+
+    expect(await screen.findByRole('heading', { name: '尚未建立指定課' })).toBeInTheDocument()
+    expect(screen.getByText('新增第一筆後，學生與時數會顯示在這裡')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '進行中' })).not.toBeInTheDocument()
+    expect(screen.queryByText('選擇學生查看指定課時數')).not.toBeInTheDocument()
+
+    const addButton = screen.getByRole('button', { name: '新增指定課' })
+    expect(addButton).toHaveStyle({ minWidth: '100%', minHeight: '48px' })
+    fireEvent.click(addButton)
+    expect(screen.getByRole('heading', { name: '新增指定課' })).toBeInTheDocument()
+  })
+
   it('can split one backfilled report between regular and gift minutes', async () => {
     mockedFetchStudents.mockResolvedValueOnce([{
       member_id: 'member-1',

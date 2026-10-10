@@ -989,20 +989,101 @@ export function CoachDesignatedHours({
     </div>
   )
 
-  return (
-    <>
+  const emptyState = (
+    <section
+      style={{
+        width: '100%',
+        maxWidth: 620,
+        margin: '0 auto',
+        boxSizing: 'border-box',
+        padding: isMobile ? '8px 0 20px' : '12px 0 32px',
+      }}
+    >
       <div
         style={{
-          maxWidth: 1080,
-          margin: '0 auto',
-          display: isMobile ? 'block' : 'grid',
-          gridTemplateColumns: 'minmax(280px, 360px) minmax(0, 1fr)',
-          gap: 24,
+          padding: isMobile ? '32px 20px' : '46px 32px',
+          border: `1px solid ${designSystem.colors.border.light}`,
+          borderRadius: designSystem.borderRadius.xl,
+          background: designSystem.colors.background.card,
+          textAlign: 'center',
+          boxShadow: designSystem.shadows.xs,
         }}
       >
-        {(!isMobile || !selectedMemberId) && listPanel}
-        {(!isMobile || selectedMemberId) && detailPanel}
+        <div
+          aria-hidden="true"
+          style={{
+            width: 48,
+            height: 48,
+            margin: '0 auto 16px',
+            borderRadius: designSystem.borderRadius.full,
+            background: designSystem.colors.background.hover,
+            color: designSystem.colors.text.secondary,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 25,
+            fontWeight: 400,
+          }}
+        >
+          ＋
+        </div>
+        <h2
+          style={{
+            margin: 0,
+            color: designSystem.colors.text.primary,
+            fontSize: getFontSize('h3', isMobile),
+            fontWeight: 700,
+          }}
+        >
+          尚未建立指定課
+        </h2>
+        <p
+          style={{
+            margin: '8px 0 20px',
+            color: designSystem.colors.text.secondary,
+            fontSize: getFontSize('body', isMobile),
+            lineHeight: 1.6,
+          }}
+        >
+          新增第一筆後，學生與時數會顯示在這裡
+        </p>
+        <button
+          type="button"
+          data-track="coach_designated_empty_add_open"
+          onClick={() => {
+            setEditingEntry(null)
+            setImageMenuOpen(false)
+            setImageView('menu')
+            setCreditOpen(true)
+          }}
+          style={{
+            ...getButtonStyle('primary', 'medium', isMobile),
+            minWidth: isMobile ? '100%' : 150,
+            minHeight: isMobile ? 48 : 44,
+          }}
+        >
+          新增指定課
+        </button>
       </div>
+    </section>
+  )
+
+  return (
+    <>
+      {!loading && students.length === 0 ? emptyState : (
+        <div
+          style={{
+            maxWidth: 1080,
+            margin: '0 auto',
+            display: isMobile ? 'block' : 'grid',
+            gridTemplateColumns: 'minmax(280px, 360px) minmax(0, 1fr)',
+            gap: 24,
+          }}
+        >
+          {(!isMobile || !selectedMemberId) && listPanel}
+          {(!isMobile || selectedMemberId) && detailPanel}
+        </div>
+      )}
 
       {imageMenuOpen && (
         <div
