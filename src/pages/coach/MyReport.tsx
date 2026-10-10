@@ -12,7 +12,6 @@ import { AdminPillRow, AdminPillButton } from '../../components/AdminPageLayout'
 import { designSystem, getFontSize } from '../../styles/designSystem'
 import { PageShell } from '../../components/PageShell'
 import { CoachDesignatedHours } from './designatedHours/CoachDesignatedHours'
-import { AdminCoachDesignatedHours } from './designatedHours/AdminCoachDesignatedHours'
 import { getTemporaryCoachReportPreviewName, isAdmin } from '../../utils/auth'
 
 export function MyReport() {
@@ -160,10 +159,8 @@ export function MyReport() {
             <CoachRecords coachId={coachId} isMobile={isMobile} />
           )}
 
-          {activeTab === 'designated' && (admin || coachId) && (
-            admin
-              ? <AdminCoachDesignatedHours isMobile={isMobile} />
-              : <CoachDesignatedHours coachId={coachId!} isMobile={isMobile} />
+          {activeTab === 'designated' && coachId && (
+            <CoachDesignatedHours coachId={coachId} isMobile={isMobile} />
           )}
         </div>
     </PageShell>

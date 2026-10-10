@@ -108,7 +108,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
     loadPastData()
     // loadPastData reads exactly the filter state listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reportKind, selectedDate, selectedCoachId])
+  }, [autoFilterCoachId, reportKind, selectedDate, selectedCoachId])
 
   const loadPastData = async () => {
     if (!selectedDate) return
@@ -132,7 +132,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
       // 1. 載入教學記錄
       const teachingData = await fetchAllPaginated<TeachingRecord>(async (from, to) => {
-        const { data, error } = await supabase
+        let query = supabase
           .from('booking_participants')
           .select(`
           *,
@@ -148,6 +148,8 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           .eq('is_deleted', false)
           .gte('bookings.start_at', `${startDate}T00:00:00`)
           .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+        if (autoFilterCoachId) query = query.eq('coach_id', autoFilterCoachId)
+        const { data, error } = await query
           .order('id', { ascending: true })
           .range(from, to)
         return { data: data as unknown as TeachingRecord[] | null, error }
@@ -155,7 +157,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
       // 2. 載入駕駛記錄
       const drivingData = await fetchAllPaginated<DrivingRecord>(async (from, to) => {
-        const { data, error } = await supabase
+        let query = supabase
           .from('coach_reports')
           .select(`
           *,
@@ -167,6 +169,8 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
         `)
           .gte('bookings.start_at', `${startDate}T00:00:00`)
           .lte('bookings.start_at', `${endDateStr}T23:59:59`)
+        if (autoFilterCoachId) query = query.eq('coach_id', autoFilterCoachId)
+        const { data, error } = await query
           .order('id', { ascending: true })
           .range(from, to)
         return { data: data as unknown as DrivingRecord[] | null, error }
