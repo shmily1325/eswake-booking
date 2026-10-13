@@ -26,7 +26,11 @@ const adminOverviewSql = readFileSync(
   resolve(process.cwd(), 'migrations/254_admin_coach_designated_overview.sql'),
   'utf8',
 )
-const combined = `${schemaSql}\n${rpcSql}\n${splitSql}\n${expirySummarySql}\n${safeBackfillSql}\n${adminOverviewSql}`.toLowerCase()
+const negativeBackfillSql = readFileSync(
+  resolve(process.cwd(), 'migrations/256_allow_negative_designated_backfill.sql'),
+  'utf8',
+)
+const combined = `${schemaSql}\n${rpcSql}\n${splitSql}\n${expirySummarySql}\n${safeBackfillSql}\n${adminOverviewSql}\n${negativeBackfillSql}`.toLowerCase()
 
 describe('coach designated-hour migrations', () => {
   it('keeps the new ledger isolated from existing financial storage', () => {
@@ -125,6 +129,17 @@ describe('coach designated-hour migrations', () => {
     expect(safeBackfillSql).toMatch(
       /v_existing\.regular_minutes IS DISTINCT FROM v_regular_minutes[\s\S]*CONTINUE/i,
     )
+  })
+
+  it('allows the current backfill RPC to create a temporary negative balance safely', () => {
+    expect(negativeBackfillSql).toContain('backfill_coach_designated_report_deductions')
+    expect(negativeBackfillSql).toMatch(
+      /booking_participants[\s\S]*FOR UPDATE[\s\S]*member_id IS DISTINCT FROM p_member_id/i,
+    )
+    expect(negativeBackfillSql).toContain('這筆上課紀錄已經扣除指定課')
+    expect(negativeBackfillSql).not.toContain('扣除分鐘不能超過目前剩餘時數')
+    expect(negativeBackfillSql).not.toMatch(/\b(public\.)?transactions\b/i)
+    expect(negativeBackfillSql).not.toMatch(/\bUPDATE\s+public\.members\b/i)
   })
 
   it('returns every active coach in one admin-only overview without N+1 RPC calls', () => {

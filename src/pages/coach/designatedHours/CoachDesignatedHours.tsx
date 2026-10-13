@@ -25,6 +25,7 @@ import {
 } from './shareImages'
 import { buildCoachDesignatedBatches } from './fifo'
 import { selectCoachDesignatedLedgerRange } from './ledgerRange'
+import { buildCoachDesignatedRunningBalances } from './runningBalances'
 import type {
   CoachDesignatedBatch,
   CoachDesignatedEligibleReport,
@@ -64,12 +65,6 @@ function createRequestKey(): string {
   bytes[8] = (bytes[8] & 0x3f) | 0x80
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
-}
-
-function getDaysAgoDateString(days: number): string {
-  const date = new Date()
-  date.setDate(date.getDate() - days)
-  return getLocalDateString(date)
 }
 
 function formatImageRange(startDate: string, endDate: string): string {
@@ -200,7 +195,7 @@ export function CoachDesignatedHours({
   const [editNote, setEditNote] = useState('')
   const [imageMenuOpen, setImageMenuOpen] = useState(false)
   const [imageView, setImageView] = useState<ImageView>('menu')
-  const [ledgerImageStartDate, setLedgerImageStartDate] = useState(getDaysAgoDateString(30))
+  const [ledgerImageStartDate, setLedgerImageStartDate] = useState(getLocalDateString())
   const [ledgerImageEndDate, setLedgerImageEndDate] = useState(getLocalDateString())
   const [ledgerImageError, setLedgerImageError] = useState<string | null>(null)
   const detailRequestRef = useRef(0)
@@ -218,7 +213,7 @@ export function CoachDesignatedHours({
   const parsedEditRegular = Number(editRegularMinutes || 0)
   const parsedEditGift = Number(editGiftMinutes || 0)
   const parsedEditMinutes = parsedEditRegular + parsedEditGift
-  const isDefaultLedgerImageRange = ledgerImageStartDate === getDaysAgoDateString(30)
+  const isDefaultLedgerImageRange = ledgerImageStartDate === getLocalDateString()
     && ledgerImageEndDate === getLocalDateString()
   const originalEditDelta = editingEntry?.delta_minutes ?? 0
   const originalRegularDelta = editingEntry
@@ -375,15 +370,11 @@ export function CoachDesignatedHours({
       || gift < 0
       || regular + gift <= 0
   })
-  const selectedDeductionExceedsBalance =
-    selectedDeductionSummary.regular > regularBalance
-    || selectedDeductionSummary.gift > giftBalance
   const deductionSubmitDisabled =
     saving
     || eligibleReportsLoading
     || selectedReportIds.size === 0
     || selectedDeductionHasInvalidMinutes
-    || selectedDeductionExceedsBalance
 
   const resetCreditDialog = () => {
     setCreditOpen(false)
@@ -474,12 +465,6 @@ export function CoachDesignatedHours({
     })
     if (items.some((item) => !Number.isFinite(item.minutes) || item.minutes <= 0)) {
       toast.warning('扣除分鐘必須大於 0')
-      return
-    }
-    const regularTotal = items.reduce((sum, item) => sum + item.regular_minutes, 0)
-    const giftTotal = items.reduce((sum, item) => sum + item.gift_minutes, 0)
-    if (regularTotal > regularBalance || giftTotal > giftBalance) {
-      toast.warning('扣除分鐘不能超過目前剩餘時數')
       return
     }
     setSaving(true)
@@ -921,7 +906,6 @@ export function CoachDesignatedHours({
         <button
           type="button"
           data-track="coach_designated_backfill_open"
-          disabled={balance <= 0}
           onClick={() => {
             setCreditOpen(false)
             setEditingEntry(null)
@@ -935,23 +919,10 @@ export function CoachDesignatedHours({
           style={{
             ...getButtonStyle('outline', 'medium', isMobile),
             width: '100%',
-            opacity: balance <= 0 ? 0.55 : 1,
-            cursor: balance <= 0 ? 'not-allowed' : 'pointer',
           }}
         >
           補扣指定課
         </button>
-        {balance <= 0 && (
-          <div
-            style={{
-              gridColumn: '1 / -1',
-              color: designSystem.colors.text.secondary,
-              fontSize: getFontSize('caption', isMobile),
-            }}
-          >
-            請先新增指定課，再補扣上課紀錄
-          </div>
-        )}
         <button
           type="button"
           data-track="coach_designated_save_ledger_image"
@@ -960,7 +931,7 @@ export function CoachDesignatedHours({
             setCreditOpen(false)
             resetDeductionDialog()
             setEditingEntry(null)
-            setLedgerImageStartDate(getDaysAgoDateString(30))
+            setLedgerImageStartDate(getLocalDateString())
             setLedgerImageEndDate(getLocalDateString())
             setLedgerImageError(null)
             setImageView('menu')
@@ -1168,13 +1139,13 @@ export function CoachDesignatedHours({
                     <button
                       type="button"
                       onClick={() => {
-                        setLedgerImageStartDate(getDaysAgoDateString(30))
+                        setLedgerImageStartDate(getLocalDateString())
                         setLedgerImageEndDate(getLocalDateString())
                         setLedgerImageError(null)
                       }}
                       style={getButtonStyle('outline', 'small', isMobile)}
                     >
-                      重設近 30 天
+                      重設今天
                     </button>
                   </div>
                 )}
@@ -1696,7 +1667,7 @@ export function CoachDesignatedHours({
                 <div>
                   已選 {selectedDeductionSummary.count} 堂・共扣 {selectedDeductionTotal} 分
                 </div>
-                {selectedDeductionExceedsBalance ? (
+                {balanceAfterDeduction < 0 ? (
                   <strong
                     role="alert"
                     style={{
@@ -1705,7 +1676,7 @@ export function CoachDesignatedHours({
                       color: designSystem.colors.danger[700],
                     }}
                   >
-                    扣除超過目前餘額
+                    扣後餘額 {balanceAfterDeduction} 分，可先補扣後再新增指定課
                   </strong>
                 ) : (
                   <>
@@ -2033,6 +2004,8 @@ function EntryList({
   isMobile: boolean
   onEdit: (entry: CoachDesignatedEntry) => void
 }) {
+  const runningBalances = buildCoachDesignatedRunningBalances(entries)
+
   return (
     <div
       style={{
@@ -2088,13 +2061,40 @@ function EntryList({
             style={{
               flexShrink: 0,
               marginLeft: 12,
-              fontWeight: 700,
-              color: entry.delta_minutes >= 0
-                ? designSystem.colors.success[700]
-                : designSystem.colors.danger[700],
+              textAlign: 'right',
             }}
           >
-            {entry.delta_minutes >= 0 ? '+' : '−'}{Math.abs(entry.delta_minutes)} 分
+            <span
+              style={{
+                display: 'block',
+                fontWeight: 700,
+                color: entry.delta_minutes >= 0
+                  ? designSystem.colors.success[700]
+                  : designSystem.colors.danger[700],
+              }}
+            >
+              {entry.delta_minutes >= 0 ? '+' : '−'}{Math.abs(entry.delta_minutes)} 分
+            </span>
+            <span
+              style={{
+                display: 'inline-block',
+                marginTop: 4,
+                padding: (runningBalances.get(entry.id) ?? 0) < 0 ? '2px 7px' : 0,
+                borderRadius: designSystem.borderRadius.full,
+                background: (runningBalances.get(entry.id) ?? 0) < 0
+                  ? designSystem.colors.danger[50]
+                  : 'transparent',
+                color: (runningBalances.get(entry.id) ?? 0) < 0
+                  ? designSystem.colors.danger[700]
+                  : designSystem.colors.text.secondary,
+                fontSize: getFontSize('caption', isMobile),
+                fontWeight: (runningBalances.get(entry.id) ?? 0) < 0 ? 700 : 500,
+                fontVariantNumeric: 'tabular-nums',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              餘額 {runningBalances.get(entry.id) ?? 0} 分
+            </span>
           </span>
         </button>
       ))}

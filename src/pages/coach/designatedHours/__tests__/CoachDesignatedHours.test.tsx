@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getLocalDateString } from '../../../../utils/date'
 import { CoachDesignatedHours } from '../CoachDesignatedHours'
 import {
   backfillCoachDesignatedReportDeductions,
@@ -135,6 +136,39 @@ describe('CoachDesignatedHours', () => {
     expect(screen.getByRole('heading', { name: '新增指定課' })).toBeInTheDocument()
   })
 
+  it('defaults both ledger image dates to today', async () => {
+    mockedFetchDetail.mockResolvedValueOnce({
+      balance: 330,
+      regular_balance: 330,
+      gift_balance: 0,
+      has_gift_entries: false,
+      regular_expires_on: null,
+      gift_expires_on: null,
+      entries: [{
+        id: 1,
+        entry_type: 'credit',
+        minutes: 330,
+        regular_minutes: 330,
+        gift_minutes: 0,
+        delta_minutes: 330,
+        occurred_at: '2026-10-14T10:00:00+08:00',
+        expires_on: null,
+        note: null,
+        booking_participant_id: null,
+      }],
+    })
+
+    render(<CoachDesignatedHours coachId="coach-1" isMobile />)
+
+    fireEvent.click(await screen.findByText('Penny'))
+    await screen.findByText('Penny｜指定課')
+    fireEvent.click(screen.getByRole('button', { name: '儲存圖片' }))
+    fireEvent.click(screen.getByRole('button', { name: /流水明細/ }))
+
+    expect(screen.getAllByDisplayValue(getLocalDateString())).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: '重設今天' })).not.toBeInTheDocument()
+  })
+
   it('can split one backfilled report between regular and gift minutes', async () => {
     mockedFetchStudents.mockResolvedValueOnce([{
       member_id: 'member-1',
@@ -211,7 +245,7 @@ describe('CoachDesignatedHours', () => {
     expect(await screen.findByText(/2026-10-04 10:00 · G21 · 30 分/)).toBeInTheDocument()
   })
 
-  it('asks the coach to add designated minutes before backfilling', async () => {
+  it('allows backfilling before the coach adds replacement minutes', async () => {
     mockedFetchStudents.mockResolvedValueOnce([{
       member_id: 'member-1',
       name: 'Penny',
@@ -243,8 +277,9 @@ describe('CoachDesignatedHours', () => {
     fireEvent.click(studentName.closest('button')!)
     await screen.findByText('Penny｜指定課')
 
-    expect(screen.getByRole('button', { name: '補扣指定課' })).toBeDisabled()
-    expect(screen.getByText('請先新增指定課，再補扣上課紀錄')).toBeInTheDocument()
-    expect(mockedFetchEligibleReports).not.toHaveBeenCalled()
+    const backfillButton = screen.getByRole('button', { name: '補扣指定課' })
+    expect(backfillButton).toBeEnabled()
+    fireEvent.click(backfillButton)
+    expect(await screen.findByText(/2026-10-04 10:00 · G21 · 30 分/)).toBeInTheDocument()
   })
 })

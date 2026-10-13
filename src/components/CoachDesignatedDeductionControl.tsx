@@ -26,12 +26,15 @@ export function CoachDesignatedDeductionControl({
   const [balance, setBalance] = useState(0)
   const [regularBalance, setRegularBalance] = useState(0)
   const [giftBalance, setGiftBalance] = useState(0)
+  const [originalRegularDeduction, setOriginalRegularDeduction] = useState(0)
+  const [originalGiftDeduction, setOriginalGiftDeduction] = useState(0)
   const [hasGiftEntries, setHasGiftEntries] = useState(false)
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [shouldShow, setShouldShow] = useState(false)
   const [reloadToken, setReloadToken] = useState(0)
   const loadedKeyRef = useRef<string | null>(null)
+  const expansionInitializedKeyRef = useRef<string | null>(null)
   const onUpdateRef = useRef(onUpdate)
   onUpdateRef.current = onUpdate
 
@@ -43,6 +46,8 @@ export function CoachDesignatedDeductionControl({
     const loadKey = `${coachId}:${memberId}:${participant.id}`
     if (loadedKeyRef.current === loadKey) return
     loadedKeyRef.current = loadKey
+    setOriginalRegularDeduction(0)
+    setOriginalGiftDeduction(0)
     setShouldShow(true)
     let cancelled = false
 
@@ -60,7 +65,20 @@ export function CoachDesignatedDeductionControl({
         setRegularBalance(context.regular_balance)
         setGiftBalance(context.gift_balance)
         setHasGiftEntries(context.has_gift_entries)
+        setOriginalRegularDeduction(
+          context.deduction_regular_minutes
+          ?? context.deduction_minutes
+          ?? 0,
+        )
+        setOriginalGiftDeduction(context.deduction_gift_minutes ?? 0)
         setShouldShow(shouldShowCoachDesignatedControl(context.has_entries, false))
+        if (
+          context.has_entries
+          && expansionInitializedKeyRef.current !== loadKey
+        ) {
+          expansionInitializedKeyRef.current = loadKey
+          setExpanded(true)
+        }
 
         if (!participant.designated_hours_initialized) {
           const existingDeduction = context.deduction_minutes
@@ -133,7 +151,13 @@ export function CoachDesignatedDeductionControl({
     ?? participant.duration_min
   const giftMinutes = participant.designated_hours_gift_minutes ?? 0
   const minutes = regularMinutes + giftMinutes
-  const after = balance - (deduct ? minutes : 0)
+  const regularAfter = regularBalance
+    + originalRegularDeduction
+    - (deduct ? regularMinutes : 0)
+  const giftAfter = giftBalance
+    + originalGiftDeduction
+    - (deduct ? giftMinutes : 0)
+  const after = regularAfter + giftAfter
   const showGift = hasGiftEntries || giftBalance !== 0 || giftMinutes > 0
   const split = regularMinutes > 0 && giftMinutes > 0
 
@@ -147,9 +171,15 @@ export function CoachDesignatedDeductionControl({
     <div
       style={{
         marginBottom: 12,
-        border: `1px solid ${designSystem.colors.border.light}`,
+        border: `1.5px solid ${
+          loadError
+            ? designSystem.colors.danger[500]
+            : `${designSystem.colors.info[500]}66`
+        }`,
         borderRadius: designSystem.borderRadius.lg,
-        background: designSystem.colors.background.card,
+        background: loadError
+          ? designSystem.colors.danger[50]
+          : designSystem.colors.info[50],
         overflow: 'hidden',
       }}
     >
@@ -160,8 +190,8 @@ export function CoachDesignatedDeductionControl({
         aria-expanded={expanded}
         style={{
           width: '100%',
-          minHeight: isMobile ? 48 : 44,
-          padding: '10px 12px',
+          minHeight: isMobile ? 58 : 52,
+          padding: isMobile ? '11px 13px' : '10px 14px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -174,10 +204,40 @@ export function CoachDesignatedDeductionControl({
           fontSize: getFontSize('body', isMobile),
         }}
       >
-        <span style={{ fontWeight: 600 }}>指定課時數</span>
         <span
           style={{
-            flex: 1,
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 9,
+            minWidth: 0,
+          }}
+        >
+          <span
+            style={{
+              fontWeight: 700,
+              color: loadError
+                ? designSystem.colors.danger[700]
+                : designSystem.colors.info[700],
+            }}
+          >
+            指定課
+          </span>
+          {!loading && !loadError && (
+            <span
+              style={{
+                color: designSystem.colors.text.primary,
+                fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              剩餘 {balance} 分
+            </span>
+          )}
+        </span>
+        <span
+          style={{
+            flexShrink: 0,
             minWidth: 0,
             textAlign: 'right',
             lineHeight: 1.4,
@@ -189,7 +249,7 @@ export function CoachDesignatedDeductionControl({
             ? '載入中'
             : loadError
               ? '無法載入'
-              : `剩 ${balance} 分${giftBalance !== 0 ? `（指定課 ${regularBalance}・贈送 ${giftBalance}）` : ''}｜${deduct ? `本次扣 ${minutes} 分` : '本次不扣'} ${expanded ? '收合' : '展開'}`}
+              : `${deduct ? `本次扣 ${minutes} 分` : '本次不扣'} · ${expanded ? '收合' : '展開'}`}
         </span>
       </button>
 
@@ -198,6 +258,7 @@ export function CoachDesignatedDeductionControl({
           style={{
             padding: '12px',
             borderTop: `1px solid ${designSystem.colors.border.light}`,
+            background: designSystem.colors.background.card,
           }}
         >
           <label
@@ -329,7 +390,7 @@ export function CoachDesignatedDeductionControl({
                 扣除後總剩餘 {after} 分鐘
                 {showGift && (
                   <span>
-                    {' '}（指定課 {regularBalance - regularMinutes}・贈送 {giftBalance - giftMinutes}）
+                    {' '}（指定課 {regularAfter}・贈送 {giftAfter}）
                   </span>
                 )}
               </div>
@@ -343,6 +404,22 @@ export function CoachDesignatedDeductionControl({
                 >
                   預約 {participant.duration_min} 分，本次扣除 {minutes} 分
                 </div>
+              )}
+            </div>
+          )}
+          {!deduct && originalRegularDeduction + originalGiftDeduction > 0 && (
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: getFontSize('bodySmall', isMobile),
+                color: designSystem.colors.text.secondary,
+              }}
+            >
+              取消扣除後總剩餘 {after} 分鐘
+              {showGift && (
+                <span>
+                  {' '}（指定課 {regularAfter}・贈送 {giftAfter}）
+                </span>
               )}
             </div>
           )}
