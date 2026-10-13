@@ -117,6 +117,7 @@ export function LiffMyBookings() {
   const [selectedCoachDesignated, setSelectedCoachDesignated] = useState<LiffCoachDesignatedBalance | null>(null)
   const [coachDesignatedEntries, setCoachDesignatedEntries] = useState<LiffCoachDesignatedEntry[]>([])
   const [coachDesignatedTotal, setCoachDesignatedTotal] = useState(0)
+  const [loadingCoachDesignatedBalances, setLoadingCoachDesignatedBalances] = useState(false)
   const [loadingCoachDesignated, setLoadingCoachDesignated] = useState(false)
   
   // 刷新狀態
@@ -138,16 +139,23 @@ export function LiffMyBookings() {
   const expiryBannerLines = useMemo(() => buildLiffExpiryBannerLines(member), [member])
 
   useEffect(() => {
-    if (activeTab !== 'balance' || !member) return
-    setLoadingCoachDesignated(true)
+    if (!member) return
+    let cancelled = false
+    setLoadingCoachDesignatedBalances(true)
     fetchLiffCoachDesignatedBalances()
-      .then(setCoachDesignatedBalances)
+      .then((balances) => {
+        if (!cancelled) setCoachDesignatedBalances(balances)
+      })
       .catch((err) => {
         console.error('載入教練指定課餘額失敗:', err)
-        setCoachDesignatedBalances([])
       })
-      .finally(() => setLoadingCoachDesignated(false))
-  }, [activeTab, member])
+      .finally(() => {
+        if (!cancelled) setLoadingCoachDesignatedBalances(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [member])
 
   const loadShopOrders = useCallback(async (userId: string, silent = false): Promise<boolean> => {
     setLoadingShopOrders(true)
@@ -326,7 +334,6 @@ export function LiffMyBookings() {
     
     // 清除交易記錄快取
     setTransactionCache({})
-    setCoachDesignatedBalances([])
     
     try {
       const bootstrap = await fetchLiffMemberBootstrap<LiffShopOrder>()
@@ -569,6 +576,7 @@ export function LiffMyBookings() {
             <BalanceView
               member={member}
               coachDesignatedBalances={coachDesignatedBalances}
+              coachDesignatedLoading={loadingCoachDesignatedBalances}
               onCategoryClick={handleCategoryClick}
             />
           )}

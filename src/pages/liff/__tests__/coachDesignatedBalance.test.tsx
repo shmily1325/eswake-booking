@@ -15,6 +15,18 @@ const member = {
 } as Member
 
 describe('LIFF coach designated hours', () => {
+  it('keeps a card position while coach balances load', () => {
+    render(
+      <BalanceView
+        member={member}
+        coachDesignatedLoading
+        onCategoryClick={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('status', { name: '正在載入指定課' })).toBeInTheDocument()
+  })
+
   it('adds each coach as one independent balance card', () => {
     const onClick = vi.fn()
     render(

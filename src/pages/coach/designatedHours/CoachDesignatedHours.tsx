@@ -58,6 +58,15 @@ function compactDate(value: string): string {
   }).format(date)
 }
 
+function ledgerMonthLabel(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value.slice(0, 7)
+  return new Intl.DateTimeFormat('zh-TW', {
+    year: 'numeric',
+    month: 'long',
+  }).format(date)
+}
+
 function createRequestKey(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
   const bytes = crypto.getRandomValues(new Uint8Array(16))
@@ -1664,31 +1673,26 @@ export function CoachDesignatedHours({
                   lineHeight: 1.6,
                 }}
               >
-                <div>
-                  已選 {selectedDeductionSummary.count} 堂・共扣 {selectedDeductionTotal} 分
-                </div>
-                {balanceAfterDeduction < 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0 4px' }}>
+                  <span>
+                    已選 {selectedDeductionSummary.count} 堂・扣 {selectedDeductionTotal} 分・扣後
+                  </span>
                   <strong
-                    role="alert"
+                    role={balanceAfterDeduction < 0 ? 'status' : undefined}
                     style={{
-                      display: 'block',
-                      marginTop: 2,
-                      color: designSystem.colors.danger[700],
+                      color: balanceAfterDeduction < 0
+                        ? designSystem.colors.danger[700]
+                        : designSystem.colors.text.primary,
+                      fontVariantNumeric: 'tabular-nums',
                     }}
                   >
-                    扣後餘額 {balanceAfterDeduction} 分，可先補扣後再新增指定課
+                    {balanceAfterDeduction} 分
                   </strong>
-                ) : (
-                  <>
-                    <strong style={{ display: 'block', marginTop: 2 }}>
-                      扣後剩餘 {balanceAfterDeduction} 分
-                    </strong>
-                    {(hasGiftEntries || giftBalance !== 0) && (
-                      <div style={{ color: designSystem.colors.text.secondary }}>
-                        指定課 {regularBalance - selectedDeductionSummary.regular} 分・贈送 {giftBalance - selectedDeductionSummary.gift} 分
-                      </div>
-                    )}
-                  </>
+                </div>
+                {(hasGiftEntries || giftBalance !== 0) && (
+                  <div style={{ color: designSystem.colors.text.secondary }}>
+                    指定課 {regularBalance - selectedDeductionSummary.regular} 分・贈送 {giftBalance - selectedDeductionSummary.gift} 分
+                  </div>
                 )}
               </div>
             )}
@@ -2017,87 +2021,119 @@ function EntryList({
     >
       {entries.length === 0 ? (
         <div style={{ padding: 24, color: designSystem.colors.text.secondary }}>尚無時數紀錄</div>
-      ) : entries.map((entry, index) => (
-        <button
-          key={entry.id}
-          type="button"
-          data-track="coach_designated_entry_open"
-          onClick={() => onEdit(entry)}
-          style={{
-            width: '100%',
-            minHeight: isMobile ? 62 : 56,
-            padding: '11px 14px',
-            border: 0,
-            borderBottom: index < entries.length - 1
-              ? `1px solid ${designSystem.colors.border.light}`
-              : 0,
-            background: designSystem.colors.background.card,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            textAlign: 'left',
-            cursor: 'pointer',
-          }}
-        >
-          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-            <span style={{ display: 'block', color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
-              {entry.entry_type === 'credit'
-                ? entry.occurred_at.slice(5, 10).replace('-', '/')
-                : compactDate(entry.booking_start_at || entry.occurred_at)}
-            </span>
-            <span>
-              {entry.entry_type === 'credit'
-                ? (entry.note || '新增指定課')
-                : (entry.boat_name || '未指定船')}
-            </span>
-            <span style={{ display: 'block', marginTop: 3, color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>
-              {entryTypeLabel(entry)}
-              {entry.entry_type === 'credit' && entry.expires_on
-                ? ` · ${expiryLabel(entry.expires_on)}`
-                : ''}
-            </span>
-          </span>
-          <span
-            style={{
-              flexShrink: 0,
-              marginLeft: 12,
-              textAlign: 'right',
-            }}
-          >
-            <span
+      ) : entries.map((entry, index) => {
+        const entryDate = entry.entry_type === 'credit'
+          ? entry.occurred_at
+          : (entry.booking_start_at || entry.occurred_at)
+        const monthLabel = ledgerMonthLabel(entryDate)
+        const previousEntry = entries[index - 1]
+        const previousDate = previousEntry
+          ? (previousEntry.entry_type === 'credit'
+              ? previousEntry.occurred_at
+              : (previousEntry.booking_start_at || previousEntry.occurred_at))
+          : null
+        const showMonth = !previousDate || ledgerMonthLabel(previousDate) !== monthLabel
+        const balanceAfter = runningBalances.get(entry.id) ?? 0
+        const detailLabel = entryTypeLabel(entry)
+        const expiry = entry.entry_type === 'credit' ? expiryLabel(entry.expires_on) : null
+
+        return (
+          <div key={entry.id}>
+            {showMonth && (
+              <div
+                style={{
+                  padding: '9px 14px',
+                  borderBottom: `1px solid ${designSystem.colors.border.light}`,
+                  background: designSystem.colors.background.main,
+                  color: designSystem.colors.text.secondary,
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  fontWeight: 600,
+                }}
+              >
+                {monthLabel}
+              </div>
+            )}
+            <button
+              type="button"
+              data-track="coach_designated_entry_open"
+              aria-label={`${entry.entry_type === 'credit' ? '增加' : '扣除'} ${Math.abs(entry.delta_minutes)} 分，餘額 ${balanceAfter} 分`}
+              onClick={() => onEdit(entry)}
               style={{
-                display: 'block',
-                fontWeight: 700,
-                color: entry.delta_minutes >= 0
-                  ? designSystem.colors.success[700]
-                  : designSystem.colors.danger[700],
+                width: '100%',
+                minHeight: isMobile ? 60 : 56,
+                padding: '11px 14px',
+                border: 0,
+                borderBottom: index < entries.length - 1
+                  ? `1px solid ${designSystem.colors.border.light}`
+                  : 0,
+                background: designSystem.colors.background.card,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                textAlign: 'left',
+                cursor: 'pointer',
               }}
             >
-              {entry.delta_minutes >= 0 ? '+' : '−'}{Math.abs(entry.delta_minutes)} 分
-            </span>
-            <span
-              style={{
-                display: 'inline-block',
-                marginTop: 4,
-                padding: (runningBalances.get(entry.id) ?? 0) < 0 ? '2px 7px' : 0,
-                borderRadius: designSystem.borderRadius.full,
-                background: (runningBalances.get(entry.id) ?? 0) < 0
-                  ? designSystem.colors.danger[50]
-                  : 'transparent',
-                color: (runningBalances.get(entry.id) ?? 0) < 0
-                  ? designSystem.colors.danger[700]
-                  : designSystem.colors.text.secondary,
-                fontSize: getFontSize('caption', isMobile),
-                fontWeight: (runningBalances.get(entry.id) ?? 0) < 0 ? 700 : 500,
-                fontVariantNumeric: 'tabular-nums',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              餘額 {runningBalances.get(entry.id) ?? 0} 分
-            </span>
-          </span>
-        </button>
-      ))}
+              <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                <span style={{ display: 'block', color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
+                  {entry.entry_type === 'credit'
+                    ? entry.occurred_at.slice(5, 10).replace('-', '/')
+                    : compactDate(entryDate)}
+                </span>
+                <span style={{ display: 'block', marginTop: 2, fontWeight: 600 }}>
+                  {entry.entry_type === 'credit'
+                    ? (entry.note || '新增指定課')
+                    : (entry.boat_name || '未指定船')}
+                </span>
+                {(detailLabel || expiry) && (
+                  <span style={{ display: 'block', marginTop: 3, color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>
+                    {[detailLabel, expiry].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </span>
+              <span
+                style={{
+                  flexShrink: 0,
+                  marginLeft: 12,
+                  textAlign: 'right',
+                }}
+              >
+                <span
+                  style={{
+                    display: 'block',
+                    fontWeight: 700,
+                    color: entry.delta_minutes >= 0
+                      ? designSystem.colors.success[700]
+                      : designSystem.colors.text.primary,
+                  }}
+                >
+                  {entry.delta_minutes >= 0 ? '+' : '−'}{Math.abs(entry.delta_minutes)} 分
+                </span>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    marginTop: 4,
+                    padding: balanceAfter < 0 ? '2px 7px' : 0,
+                    borderRadius: designSystem.borderRadius.full,
+                    background: balanceAfter < 0
+                      ? designSystem.colors.danger[50]
+                      : 'transparent',
+                    color: balanceAfter < 0
+                      ? designSystem.colors.danger[700]
+                      : designSystem.colors.text.secondary,
+                    fontSize: getFontSize('caption', isMobile),
+                    fontWeight: balanceAfter < 0 ? 700 : 500,
+                    fontVariantNumeric: 'tabular-nums',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {balanceAfter} 分
+                </span>
+              </span>
+            </button>
+          </div>
+        )
+      })}
     </div>
   )
 }

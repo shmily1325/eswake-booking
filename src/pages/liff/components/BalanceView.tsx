@@ -17,6 +17,7 @@ import { BalanceCard, type BalanceTone } from './BalanceCard'
 interface BalanceViewProps {
   member: Member
   coachDesignatedBalances?: LiffCoachDesignatedBalance[]
+  coachDesignatedLoading?: boolean
   onCategoryClick: (category: string) => void
 }
 
@@ -76,6 +77,7 @@ const CARDS: {
 export function BalanceView({
   member,
   coachDesignatedBalances = [],
+  coachDesignatedLoading = false,
   onCategoryClick,
 }: BalanceViewProps) {
   const calendarYear = Number(getVenueDateString().slice(0, 4))
@@ -137,6 +139,39 @@ export function BalanceView({
             onClick={onCategoryClick}
           />
         ))}
+        {coachDesignatedLoading && coachDesignatedBalances.length === 0 ? (
+          <div
+            className="skeleton-pulse"
+            role="status"
+            aria-label="正在載入指定課"
+            style={{
+              minHeight: 92,
+              padding: '14px',
+              border: `1px solid ${c.secondary[200]}`,
+              borderRadius: LIFF_THEME.controlRadius,
+              background: c.secondary[50],
+              boxSizing: 'border-box',
+            }}
+          >
+            <div
+              style={{
+                width: '58%',
+                height: 14,
+                borderRadius: 7,
+                background: c.secondary[200],
+                marginBottom: 14,
+              }}
+            />
+            <div
+              style={{
+                width: '42%',
+                height: 28,
+                borderRadius: 8,
+                background: c.secondary[200],
+              }}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   )

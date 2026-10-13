@@ -95,8 +95,8 @@ describe('CoachDesignatedHours', () => {
     fireEvent.click(screen.getByRole('button', { name: '補扣指定課' }))
     expect(await screen.findByText(/2026-10-04 10:00 · G21 · 30 分/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('checkbox'))
-    expect(screen.getByText('已選 1 堂・共扣 30 分')).toBeInTheDocument()
-    expect(screen.getByText('扣後剩餘 300 分')).toBeInTheDocument()
+    expect(screen.getByText('已選 1 堂・扣 30 分・扣後')).toBeInTheDocument()
+    expect(screen.getByText('300 分')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '確認扣除' }))
 
     await waitFor(() => expect(mockedBackfillDeductions).toHaveBeenCalledWith(
@@ -281,5 +281,8 @@ describe('CoachDesignatedHours', () => {
     expect(backfillButton).toBeEnabled()
     fireEvent.click(backfillButton)
     expect(await screen.findByText(/2026-10-04 10:00 · G21 · 30 分/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('checkbox'))
+    expect(screen.getByRole('status')).toHaveTextContent('-30 分')
+    expect(screen.queryByText(/可先補扣/)).not.toBeInTheDocument()
   })
 })
