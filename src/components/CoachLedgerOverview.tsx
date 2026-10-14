@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { designSystem, getFontSize } from '../styles/designSystem'
 import type { CoachLedgerMetricRows } from './coachLedgerTypes'
 
@@ -15,8 +15,6 @@ interface Props {
   isMobile: boolean
   serviceRows: ServiceRow[]
   performanceRows: CoachLedgerMetricRows
-  selectedCoachId: string
-  onSelectCoach: (coachId: string) => void
 }
 
 interface OverviewRow {
@@ -97,12 +95,56 @@ export function CoachLedgerOverview({
   isMobile,
   serviceRows,
   performanceRows,
-  selectedCoachId,
-  onSelectCoach,
 }: Props) {
+  type SortKey = 'name' | 'teaching' | 'driving' | 'lesson' | 'credit' | 'product'
+  const [sort, setSort] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({
+    key: 'name',
+    direction: 'asc',
+  })
   const rows = useMemo(
-    () => buildCoachLedgerOverview(serviceRows, performanceRows),
-    [performanceRows, serviceRows],
+    () => {
+      const next = buildCoachLedgerOverview(serviceRows, performanceRows)
+      return next.sort((a, b) => {
+        if (sort.key === 'name') {
+          const result = a.name.localeCompare(b.name)
+          return sort.direction === 'asc' ? result : -result
+        }
+        const result = a[sort.key] - b[sort.key]
+        return sort.direction === 'asc' ? result : -result
+      })
+    },
+    [performanceRows, serviceRows, sort],
+  )
+
+  const setSortKey = (key: SortKey) => {
+    setSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc',
+    }))
+  }
+  const sortMark = (key: SortKey) => sort.key === key
+    ? (sort.direction === 'desc' ? ' ↓' : ' ↑')
+    : ''
+  const value = (amount: number, suffix = '分') => amount === 0
+    ? '—'
+    : `${amount.toLocaleString()} ${suffix}`
+  const SortButton = ({ sortKey, children }: { sortKey: SortKey; children: string }) => (
+    <button
+      type="button"
+      data-track={`statistics_coach_overview_sort_${sortKey}`}
+      onClick={() => setSortKey(sortKey)}
+      style={{
+        padding: 0,
+        border: 0,
+        background: 'transparent',
+        color: designSystem.colors.text.secondary,
+        fontSize: getFontSize('bodySmall', isMobile),
+        fontWeight: 600,
+        cursor: 'pointer',
+      }}
+    >
+      {children}{sortMark(sortKey)}
+    </button>
   )
 
   return (
@@ -116,56 +158,149 @@ export function CoachLedgerOverview({
         }}>
           此期間尚無教練數據
         </div>
+      ) : isMobile ? (
+        <div style={{ display: 'grid', gap: designSystem.spacing.md }}>
+          {rows.map((row) => (
+            <article
+              key={row.id}
+              style={{
+                padding: designSystem.spacing.md,
+                border: `1px solid ${designSystem.colors.border.light}`,
+                borderRadius: designSystem.borderRadius.lg,
+                background: designSystem.colors.background.card,
+              }}
+            >
+              <h3 style={{
+                margin: `0 0 ${designSystem.spacing.md}`,
+                fontSize: getFontSize('bodyLarge', true),
+                color: designSystem.colors.text.primary,
+              }}>
+                {row.name}
+              </h3>
+              {[
+                {
+                  label: '教學／駕駛',
+                  first: ['教學', value(row.teaching)],
+                  second: ['駕駛', value(row.driving)],
+                },
+                {
+                  label: '指定課',
+                  first: ['單堂', value(row.lesson)],
+                  second: ['售出', value(row.credit)],
+                },
+              ].map((group) => (
+                <div
+                  key={group.label}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '88px 1fr 1fr',
+                    gap: 8,
+                    alignItems: 'baseline',
+                    padding: '10px 0',
+                    borderTop: `1px solid ${designSystem.colors.border.light}`,
+                  }}
+                >
+                  <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', true) }}>
+                    {group.label}
+                  </span>
+                  <span>
+                    <span style={{ display: 'block', color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', true) }}>{group.first[0]}</span>
+                    <strong>{group.first[1]}</strong>
+                  </span>
+                  <span>
+                    <span style={{ display: 'block', color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', true) }}>{group.second[0]}</span>
+                    <strong>{group.second[1]}</strong>
+                  </span>
+                </div>
+              ))}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '88px 1fr',
+                gap: 8,
+                alignItems: 'baseline',
+                padding: '10px 0 0',
+                borderTop: `1px solid ${designSystem.colors.border.light}`,
+              }}>
+                <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', true) }}>商品</span>
+                <strong>
+                  {row.product === 0 ? '—' : `$${row.product.toLocaleString()}`}
+                  <span style={{ marginLeft: 6, color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', true), fontWeight: 400 }}>
+                    {row.productCount === 0 ? '' : `${row.productCount} 件`}
+                  </span>
+                </strong>
+              </div>
+            </article>
+          ))}
+        </div>
       ) : (
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
-        gap: isMobile ? 10 : 14,
-      }}>
-        {rows.map((row) => (
-          <button
-            key={row.id}
-            type="button"
-            onClick={() => onSelectCoach(row.id)}
-            style={{
-              minHeight: 150,
-              padding: isMobile ? 14 : 16,
-              border: `1px solid ${selectedCoachId === row.id
-                ? designSystem.colors.border.dark
-                : designSystem.colors.border.light}`,
-              borderRadius: designSystem.borderRadius.lg,
-              background: selectedCoachId === row.id
-                ? designSystem.colors.secondary[50]
-                : designSystem.colors.background.card,
-              color: designSystem.colors.text.primary,
-              textAlign: 'left',
-              cursor: 'pointer',
-            }}
-          >
-            <strong style={{
-              display: 'block',
-              marginBottom: 14,
-              fontSize: getFontSize('bodyLarge', isMobile),
-            }}>
-              {row.name}
-            </strong>
-            <div style={{ display: 'grid', gap: 10 }}>
-              <div>
-                <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>教學／駕駛</span>
-                <strong style={{ display: 'block', marginTop: 2 }}>{row.teaching} 分／{row.driving} 分</strong>
-              </div>
-              <div>
-                <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>指定課</span>
-                <strong style={{ display: 'block', marginTop: 2 }}>單堂 {row.lesson}／售出 {row.credit} 分</strong>
-              </div>
-              <div>
-                <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>商品</span>
-                <strong style={{ display: 'block', marginTop: 2 }}>${row.product.toLocaleString()}・{row.productCount} 件</strong>
-              </div>
-            </div>
-          </button>
-        ))}
-      </div>
+        <div style={{
+          overflowX: 'auto',
+          border: `1px solid ${designSystem.colors.border.light}`,
+          borderRadius: designSystem.borderRadius.lg,
+          background: designSystem.colors.background.card,
+        }}>
+          <table style={{
+            width: '100%',
+            minWidth: 820,
+            borderCollapse: 'collapse',
+            fontSize: getFontSize('bodySmall', false),
+          }}>
+            <thead>
+              <tr style={{ background: designSystem.colors.background.hover }}>
+                <th rowSpan={2} style={{ padding: '12px 16px', textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
+                  <SortButton sortKey="name">教練</SortButton>
+                </th>
+                <th colSpan={2} style={{ padding: '10px 12px 6px', textAlign: 'center', color: designSystem.colors.text.secondary }}>教學／駕駛</th>
+                <th colSpan={2} style={{ padding: '10px 12px 6px', textAlign: 'center', color: designSystem.colors.text.secondary }}>指定課</th>
+                <th rowSpan={2} style={{ padding: '12px 16px', textAlign: 'right', borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
+                  <SortButton sortKey="product">商品</SortButton>
+                </th>
+              </tr>
+              <tr style={{ background: designSystem.colors.background.hover }}>
+                {([
+                  ['teaching', '教學'],
+                  ['driving', '駕駛'],
+                  ['lesson', '單堂'],
+                  ['credit', '售出'],
+                ] as Array<[SortKey, string]>).map(([key, label]) => (
+                  <th key={key} style={{ padding: '6px 12px 10px', textAlign: 'right', borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
+                    <SortButton sortKey={key}>{label}</SortButton>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id} style={{ borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: getFontSize('body', false) }}>{row.name}</th>
+                  {[
+                    [row.teaching, `${row.teachingCount} 筆`],
+                    [row.driving, `${row.drivingCount} 筆`],
+                    [row.lesson, `${row.lessonCount} 筆`],
+                    [row.credit, row.credit === 0 ? '' : `購 ${row.regularCredit}・贈 ${row.giftCredit}`],
+                  ].map(([amount, detail], index) => (
+                    <td key={index} style={{ padding: '12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong>{value(Number(amount))}</strong>
+                      {detail && Number(amount) !== 0 && (
+                        <span style={{ display: 'block', marginTop: 2, color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', false) }}>
+                          {detail}
+                        </span>
+                      )}
+                    </td>
+                  ))}
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <strong>{row.product === 0 ? '—' : `$${row.product.toLocaleString()}`}</strong>
+                    {row.productCount > 0 && (
+                      <span style={{ display: 'block', marginTop: 2, color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', false) }}>
+                        {row.productCount} 件
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   )

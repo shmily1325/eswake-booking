@@ -353,18 +353,10 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
   const reportKindToggle = (
     <AdminPillRow style={{ marginTop: isMobile ? 14 : 18 }}>
-      {!autoFilterCoachId && (
-        <AdminPillButton
-          active={reportKind === 'coach_overview'}
-          onClick={() => setReportKind('coach_overview')}
-          data-track="statistics_coach_overview_open"
-        >
-          教練數據
-        </AdminPillButton>
-      )}
       <AdminPillButton
         active={reportKind === 'service'}
         onClick={() => setReportKind('service')}
+        data-track="statistics_service_open"
       >
         教學／駕駛
       </AdminPillButton>
@@ -389,6 +381,15 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       >
         商品
       </AdminPillButton>
+      {!autoFilterCoachId && (
+        <AdminPillButton
+          active={reportKind === 'coach_overview'}
+          onClick={() => setReportKind('coach_overview')}
+          data-track="statistics_coach_overview_open"
+        >
+          教練總表
+        </AdminPillButton>
+      )}
     </AdminPillRow>
   )
 
@@ -450,10 +451,6 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           isMobile={isMobile}
           serviceRows={coachStats}
           performanceRows={performanceRows}
-          selectedCoachId={selectedCoachId}
-          onSelectCoach={(coachId) => {
-            if (!autoFilterCoachId) setSelectedCoachId(coachId)
-          }}
         />
       )}
 
