@@ -15,9 +15,7 @@ import { DateRangePicker } from './DateRangePicker'
 import {
   designSystem,
   getButtonStyle,
-  getCardStyle,
   getFontSize,
-  getInputStyle,
   getLabelStyle,
 } from '../styles/designSystem'
 import { AdminPillButton, AdminPillRow } from './AdminPageLayout'
@@ -450,7 +448,9 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   }
 
   const reportKindToggle = (
-    <AdminPillRow style={{ marginTop: isMobile ? 14 : 18 }}>
+    <div style={{ marginTop: isMobile ? 18 : 22 }}>
+      <div style={getLabelStyle(isMobile)}>報表</div>
+      <AdminPillRow>
       <AdminPillButton
         active={reportKind === 'service'}
         onClick={() => setReportKind('service')}
@@ -488,60 +488,51 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
           教練總表
         </AdminPillButton>
       )}
-    </AdminPillRow>
+      </AdminPillRow>
+    </div>
   )
 
   return (
     <div>
       <div style={{
-        ...getCardStyle(isMobile),
-        marginBottom: isMobile ? '16px' : '24px'
+        marginBottom: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl,
       }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile || autoFilterCoachId ? '1fr' : 'minmax(0, 1.35fr) minmax(220px, 0.65fr)',
-          alignItems: 'end',
-          gap: isMobile ? 14 : 18,
-        }}>
-        <div>
-          <DateRangePicker
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
-            isMobile={isMobile}
-            showTodayButton={!isMobile}
-            label="查詢期間"
-            simplified={true}
-            trackPrefix={autoFilterCoachId ? 'coach_report_ledger_period' : 'admin_statistics_ledger_period'}
-          />
-        </div>
+        <DateRangePicker
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          isMobile={isMobile}
+          showTodayButton={!isMobile}
+          label="期間"
+          simplified={true}
+          trackPrefix={autoFilterCoachId ? 'coach_report_ledger_period' : 'admin_statistics_ledger_period'}
+        />
+        {reportKindToggle}
 
-        {/* 教練篩選 - 只在非自動篩選模式下顯示 */}
+        {/* 教練篩選 - 教練端固定本人，因此不顯示這一列 */}
         {!autoFilterCoachId && (
-          <div>
-            <label style={getLabelStyle(isMobile)}>
-              篩選教練
-            </label>
-            <select
-              value={selectedCoachId}
-              onChange={(e) => setSelectedCoachId(e.target.value)}
-              style={{
-                ...getInputStyle(isMobile),
-                fontWeight: '500',
-                cursor: 'pointer',
-              }}
-              data-track="admin_statistics_ledger_coach"
-            >
-              <option value="all">全部教練</option>
+          <div style={{ marginTop: isMobile ? 18 : 22 }}>
+            <div style={getLabelStyle(isMobile)}>教練</div>
+            <AdminPillRow>
+              <AdminPillButton
+                active={selectedCoachId === 'all'}
+                onClick={() => setSelectedCoachId('all')}
+                data-track="admin_statistics_ledger_coach_all"
+              >
+                全部教練
+              </AdminPillButton>
               {coachOptions.map((coach) => (
-                <option key={coach.id} value={coach.id}>
+                <AdminPillButton
+                  key={coach.id}
+                  active={selectedCoachId === coach.id}
+                  onClick={() => setSelectedCoachId(coach.id)}
+                  data-track={`admin_statistics_ledger_coach_${coach.id}`}
+                >
                   {coach.name}
-                </option>
+                </AdminPillButton>
               ))}
-            </select>
+            </AdminPillRow>
           </div>
         )}
-        </div>
-        {reportKindToggle}
       </div>
 
       {reportKind === 'coach_overview' && (
@@ -688,13 +679,14 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
             </p>
           </div>
 
-          {/* 圖表區 */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-            gap: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
-            marginBottom: designSystem.spacing.xl,
-          }}>
+          {/* 比較圖只在同時顯示多位教練時出現；單一教練直接進入細帳。 */}
+          {coachStats.length > 1 && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+              gap: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+              marginBottom: designSystem.spacing.xl,
+            }}>
             {/* 教學時數圖表 */}
             <div style={{
               padding: isMobile ? '14px' : designSystem.spacing.lg,
@@ -790,7 +782,8 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                 ))}
               </div>
             </div>
-          </div>
+            </div>
+          )}
 
           {/* 教練列表（可展開細帳） */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.md }}>

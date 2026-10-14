@@ -56,6 +56,11 @@ describe('StatisticsTab shared ledger', () => {
   it('keeps the four simple report sections', async () => {
     render(<StatisticsTab isMobile={false} />)
 
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '全部教練' })).toHaveAttribute(
+      'data-track',
+      'admin_statistics_ledger_coach_all',
+    )
     expect(screen.getByRole('button', { name: '教練總表' })).toHaveAttribute(
       'data-track',
       'statistics_coach_overview_open',
