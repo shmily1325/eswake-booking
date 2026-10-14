@@ -1,6 +1,7 @@
 import { useBookLocale } from './BookLocaleContext'
 import { activityDisplayName, isBothActivities } from './liffBookingConfig'
 import { boatLayoutLabel } from './liffBookingBoats'
+import { coachDisplayName } from './liffBookingCoaches'
 import { confirmSectionTitle, summaryLabel, summaryRow, summaryValue } from './bookStyles'
 import type { CoachOption, LiffBookingFormState, PreferredDate } from './types'
 import type { BookLocale } from './liffBookingI18n'
@@ -42,8 +43,11 @@ export function BookConfirmSummary({
   }
   const peopleLine = peopleParts.join(' · ')
 
+  const selectedCoach = form.coachChoice === 'designated'
+    ? coaches.find(c => c.id === form.coachId)
+    : null
   const coachName = form.coachChoice === 'designated'
-    ? coaches.find(c => c.id === form.coachId)?.name ?? '—'
+    ? selectedCoach ? coachDisplayName(selectedCoach.name, locale) : '—'
     : s.step4.coachNone
 
   const datesLine = dates.length

@@ -4,6 +4,27 @@ import type { ActivityChoice, CoachOption } from './types'
 /** LIFF 指定教練：不顯示（客人會用群組聯繫） */
 const HIDDEN_COACH_NAME_PARTS = ['火龍', '火隆', '侑曄', '阿寶', 'SKY'] as const
 
+const COACH_ENGLISH_NAMES: readonly {
+  nameParts: readonly string[]
+  nameEn: string
+}[] = [
+  { nameParts: ['Casper'], nameEn: 'Casper' },
+  { nameParts: ['木鳥'], nameEn: 'Harry' },
+  { nameParts: ['Jerry'], nameEn: 'Jerry' },
+  { nameParts: ['許書源', '巨陽尼'], nameEn: 'Johnny' },
+  { nameParts: ['小胖'], nameEn: 'Pang' },
+  { nameParts: ['義揚'], nameEn: 'YiYang' },
+  { nameParts: ['ED'], nameEn: 'ED' },
+  { nameParts: ['Kevin', '智凱'], nameEn: 'Kevin' },
+]
+
+export function coachDisplayName(name: string, locale: BookLocale): string {
+  if (locale !== 'en') return name
+  return COACH_ENGLISH_NAMES.find(entry =>
+    entry.nameParts.some(part => name.includes(part)),
+  )?.nameEn ?? name
+}
+
 /** 單堂價換算為 20 分鐘參考價 */
 function price20From30(price30: number): number {
   return Math.floor(price30 * 20 / 30)
@@ -27,13 +48,13 @@ interface CoachDesignatedRates {
  * 來源：小編牌價表（30 分或 60 分單堂價按比例換算）。
  */
 const COACH_DESIGNATED_20: readonly CoachDesignatedRates[] = [
-  { nameParts: ['Casper'], wb: 400 }, // WB $400/20分
+  { nameParts: ['Casper'], wb: 400, ws: 400 }, // WB／WS $400/20分
   { nameParts: ['木鳥'], wb: price20From30(900), ws: price20From30(750) }, // WB $900/30、WS $750/30
   { nameParts: ['Jerry'], wb: price20From30(900), ws: price20From30(900) },
   { nameParts: ['ED'], ws: price20From30(900) },
   { nameParts: ['Kevin', '智凱'], ws: price20From30(600) },
   { nameParts: ['Anita'], ws: price20From60(3000) }, // $3000/60分
-  { nameParts: ['巨陽尼'], wb: 500 },
+  { nameParts: ['巨陽尼', '許書源'], wb: 500 },
   { nameParts: ['小胖'], wb: price20From30(750), ws: price20From30(750) },
   { nameParts: ['SKY'], wb: price20From30(900), ws: price20From30(900) },
   { nameParts: ['義揚'], wb: price20From30(600) },

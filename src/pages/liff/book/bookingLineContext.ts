@@ -1,4 +1,5 @@
 import { boatLayoutLabel } from './liffBookingBoats'
+import { coachDisplayName } from './liffBookingCoaches'
 import { BOOK_I18N, type BookLocale } from './liffBookingI18n'
 import type { PriceEstimate } from './liffBookingPricing'
 import type { CoachOption, LiffBookingFormState, TimePreference } from './types'
@@ -93,7 +94,7 @@ export function buildBookingCoachLine(
   const m = BOOK_I18N[locale].lineMessage
   if (form.coachChoice === 'designated' && form.coachId) {
     const coach = coaches.find(c => c.id === form.coachId)
-    if (coach) return m.coachLine(coach.name)
+    if (coach) return m.coachLine(coachDisplayName(coach.name, locale))
     return locale === 'en' ? `Coach ${m.coachMissing}` : `教練 ${m.coachMissing}`
   }
   if (form.coachChoice === 'designated') {
@@ -110,7 +111,7 @@ function buildBookingCoachValue(
   const m = BOOK_I18N[locale].lineMessage
   if (form.coachChoice === 'designated' && form.coachId) {
     const coach = coaches.find(c => c.id === form.coachId)
-    return coach?.name ?? m.coachMissing
+    return coach ? coachDisplayName(coach.name, locale) : m.coachMissing
   }
   if (form.coachChoice === 'designated') return m.coachMissing
   return m.coachNone

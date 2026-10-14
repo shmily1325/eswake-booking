@@ -2,6 +2,7 @@ import { triggerHaptic } from '../../../utils/haptic'
 import { useBookLocale } from './BookLocaleContext'
 import { chipBtn } from './bookStyles'
 import {
+  coachDisplayName,
   designatedCoachPriceLabel,
   filterLiffBookCoaches,
 } from './liffBookingCoaches'
@@ -57,7 +58,9 @@ export function BookCoachPicker({
               onChange(coach.id)
             }}
           >
-            <span style={{ fontSize: ty.body, fontWeight: 600 }}>{coach.name}</span>
+            <span style={{ fontSize: ty.body, fontWeight: 600 }}>
+              {coachDisplayName(coach.name, locale)}
+            </span>
             {priceLabel ? (
               <span style={{
                 fontSize: ty.body,

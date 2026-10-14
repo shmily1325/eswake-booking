@@ -18,7 +18,11 @@ import {
 
 } from './liffBookingPrices'
 
-import { coachHasSplitRates, designatedCoachPrice20 } from './liffBookingCoaches'
+import {
+  coachDisplayName,
+  coachHasSplitRates,
+  designatedCoachPrice20,
+} from './liffBookingCoaches'
 
 import { activityDisplayLabel } from './liffBookingI18n'
 
@@ -182,10 +186,11 @@ export function computePriceEstimate(
 
         coachExtra = price20 * state.headcount
 
-        coachLine = { coachName: coach.name, amount: coachExtra }
+        const coachName = coachDisplayName(coach.name, locale)
+        coachLine = { coachName, amount: coachExtra }
 
         detailLines.push(
-          s.pricing.designatedCoach(coach.name, state.headcount, `$${price20.toLocaleString()}`),
+          s.pricing.designatedCoach(coachName, state.headcount, `$${price20.toLocaleString()}`),
         )
         if (activity === 'BOTH' && coachHasSplitRates(coach)) {
           detailLines.push(s.pricing.coachBothEstimate)
