@@ -104,6 +104,8 @@ describe('CoachDesignatedDeductionControl balance preview', () => {
     expect(screen.getByRole('button', { name: /指定課.*剩餘 100 分/ }))
       .toHaveAttribute('aria-expanded', 'true')
     expect(await screen.findByText(/扣除後總剩餘 100 分鐘/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '分開扣' }))
+      .toHaveAttribute('aria-pressed', 'true')
 
     fireEvent.change(screen.getByLabelText('指定課扣除分鐘'), {
       target: { value: '15' },
@@ -187,5 +189,28 @@ describe('CoachDesignatedDeductionControl balance preview', () => {
     })
     expect(await screen.findByText('扣除後總剩餘 70 分鐘')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '重新載入' })).not.toBeInTheDocument()
+  })
+
+  it('stays visually hidden when the member has no designated-hour entries', async () => {
+    mockedFetchContext.mockResolvedValueOnce({
+      balance: 0,
+      regular_balance: 0,
+      gift_balance: 0,
+      has_gift_entries: false,
+      has_entries: false,
+      deduction_minutes: null,
+      deduction_regular_minutes: null,
+      deduction_gift_minutes: null,
+      deduction_decided: false,
+      explicit_no_deduction: false,
+    })
+
+    render(<Harness />)
+
+    await waitFor(() => expect(mockedFetchContext).toHaveBeenCalledOnce())
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /指定課.*展開/ })).not.toBeInTheDocument()
+    })
+    expect(screen.queryByText('載入中')).not.toBeInTheDocument()
   })
 })

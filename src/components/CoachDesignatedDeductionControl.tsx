@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { designSystem, getButtonStyle, getFontSize, getInputStyle } from '../styles/designSystem'
+import {
+  designSystem,
+  getBookingChoiceStyle,
+  getButtonStyle,
+  getFontSize,
+  getInputStyle,
+} from '../styles/designSystem'
 import type { Participant } from '../types/booking'
 import { fetchCoachDesignatedMemberContext } from '../pages/coach/designatedHours/api'
 import {
@@ -32,6 +38,7 @@ export function CoachDesignatedDeductionControl({
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const [shouldShow, setShouldShow] = useState(false)
+  const [showLoadingHint, setShowLoadingHint] = useState(false)
   const [reloadToken, setReloadToken] = useState(0)
   const expansionInitializedKeyRef = useRef<string | null>(null)
   const activeLoadKeyRef = useRef<string | null>(null)
@@ -46,23 +53,37 @@ export function CoachDesignatedDeductionControl({
 
   const memberId = participant.member_id
   const eligible = participant.lesson_type === 'designated_free' && !!memberId
+  const currentLoadKey = eligible && memberId
+    ? `${coachId}:${memberId}:${participant.id}`
+    : null
 
   useEffect(() => {
-    if (!eligible || !memberId) return
-    const loadKey = `${coachId}:${memberId}:${participant.id}`
+    if (!eligible || !memberId || !currentLoadKey) {
+      activeLoadKeyRef.current = null
+      setShouldShow(false)
+      setShowLoadingHint(false)
+      setLoadError(false)
+      return
+    }
+    const loadKey = currentLoadKey
     if (activeLoadKeyRef.current !== loadKey) {
       activeLoadKeyRef.current = loadKey
       deductionEditedRef.current = false
       previousDurationRef.current = participantRef.current.duration_min
+      setShouldShow(false)
     }
     setOriginalRegularDeduction(0)
     setOriginalGiftDeduction(0)
-    setShouldShow(true)
     let cancelled = false
+    let loadingHintTimer: number | null = null
 
     const load = async () => {
       setLoading(true)
       setLoadError(false)
+      setShowLoadingHint(false)
+      loadingHintTimer = window.setTimeout(() => {
+        if (!cancelled) setShowLoadingHint(true)
+      }, 300)
       let lastError: unknown = null
       try {
         let context: Awaited<ReturnType<typeof fetchCoachDesignatedMemberContext>> | null = null
@@ -150,16 +171,22 @@ export function CoachDesignatedDeductionControl({
           setLoadError(true)
         }
       } finally {
-        if (!cancelled) setLoading(false)
+        if (loadingHintTimer != null) window.clearTimeout(loadingHintTimer)
+        if (!cancelled) {
+          setShowLoadingHint(false)
+          setLoading(false)
+        }
       }
     }
 
     void load()
     return () => {
       cancelled = true
+      if (loadingHintTimer != null) window.clearTimeout(loadingHintTimer)
     }
   }, [
     coachId,
+    currentLoadKey,
     eligible,
     memberId,
     participant.id,
@@ -204,7 +231,11 @@ export function CoachDesignatedDeductionControl({
     participant.duration_min,
   ])
 
-  if (!eligible || !shouldShow) return null
+  if (
+    !eligible
+    || activeLoadKeyRef.current !== currentLoadKey
+    || (!shouldShow && !showLoadingHint && !loadError)
+  ) return null
 
   const deduct = participant.designated_hours_deduct === true
   const regularMinutes = participant.designated_hours_regular_minutes
@@ -348,28 +379,75 @@ export function CoachDesignatedDeductionControl({
           {deduct && (
             <div style={{ marginTop: 8 }}>
               {showGift && (
-                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                    gap: 8,
+                    marginBottom: 10,
+                  }}
+                >
                   <button
                     type="button"
                     data-track="coach_designated_source_regular"
+                    aria-pressed={!split && giftMinutes === 0}
                     onClick={() => setAllocation(minutes || participant.duration_min, 0)}
                     style={{
-                      ...getButtonStyle(!split && giftMinutes === 0 ? 'primary' : 'outline', 'small', isMobile),
-                      flex: 1,
+                      ...getBookingChoiceStyle(!split && giftMinutes === 0),
+                      minHeight: 48,
+                      padding: '6px 4px',
+                      cursor: 'pointer',
+                      fontSize: getFontSize('button', isMobile),
+                      fontWeight: 600,
                     }}
                   >
-                    指定課 {regularBalance} 分
+                    <span style={{ display: 'block' }}>指定課</span>
+                    <span style={{ display: 'block', marginTop: 2, fontSize: getFontSize('caption', isMobile), fontWeight: 500 }}>
+                      {regularBalance} 分
+                    </span>
                   </button>
                   <button
                     type="button"
                     data-track="coach_designated_source_gift"
+                    aria-pressed={!split && giftMinutes > 0}
                     onClick={() => setAllocation(0, minutes || participant.duration_min)}
                     style={{
-                      ...getButtonStyle(!split && giftMinutes > 0 ? 'primary' : 'outline', 'small', isMobile),
-                      flex: 1,
+                      ...getBookingChoiceStyle(!split && giftMinutes > 0),
+                      minHeight: 48,
+                      padding: '6px 4px',
+                      cursor: 'pointer',
+                      fontSize: getFontSize('button', isMobile),
+                      fontWeight: 600,
                     }}
                   >
-                    贈送 {giftBalance} 分
+                    <span style={{ display: 'block' }}>贈送</span>
+                    <span style={{ display: 'block', marginTop: 2, fontSize: getFontSize('caption', isMobile), fontWeight: 500 }}>
+                      {giftBalance} 分
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    data-track="coach_designated_source_split"
+                    aria-pressed={split}
+                    onClick={() => {
+                      const gift = Math.max(
+                        1,
+                        Math.min(Math.max(giftBalance, 0), Math.floor(minutes / 2)),
+                      )
+                      setAllocation(minutes - gift, gift)
+                    }}
+                    disabled={minutes <= 1}
+                    style={{
+                      ...getBookingChoiceStyle(split),
+                      minHeight: 48,
+                      padding: '6px 4px',
+                      cursor: minutes > 1 ? 'pointer' : 'not-allowed',
+                      opacity: minutes > 1 ? 1 : 0.55,
+                      fontSize: getFontSize('button', isMobile),
+                      fontWeight: 600,
+                    }}
+                  >
+                    分開扣
                   </button>
                 </div>
               )}
@@ -416,29 +494,6 @@ export function CoachDesignatedDeductionControl({
                   }}
                   style={getInputStyle(isMobile)}
                 />
-              )}
-              {showGift && !split && minutes > 1 && (
-                <button
-                  type="button"
-                  data-track="coach_designated_source_split"
-                  onClick={() => {
-                    const gift = Math.max(
-                      1,
-                      Math.min(Math.max(giftBalance, 0), Math.floor(minutes / 2)),
-                    )
-                    setAllocation(minutes - gift, gift)
-                  }}
-                  style={{
-                    border: 0,
-                    background: 'transparent',
-                    color: designSystem.colors.primary[600],
-                    padding: '8px 0 0',
-                    cursor: 'pointer',
-                    fontSize: getFontSize('bodySmall', isMobile),
-                  }}
-                >
-                  分開扣
-                </button>
               )}
               <div
                 style={{
