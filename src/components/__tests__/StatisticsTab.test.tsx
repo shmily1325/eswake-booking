@@ -86,6 +86,15 @@ describe('StatisticsTab shared ledger', () => {
     await waitFor(() => expect(mockedFetchAllPaginated).toHaveBeenCalled())
   })
 
+  it('reuses loaded service data when opening the coach overview', async () => {
+    render(<StatisticsTab isMobile={false} />)
+    await waitFor(() => expect(mockedFetchAllPaginated).toHaveBeenCalledTimes(2))
+
+    fireEvent.click(screen.getByRole('button', { name: '教練總表' }))
+    expect(await screen.findByTestId('ledger-overview')).toBeInTheDocument()
+    expect(mockedFetchAllPaginated).toHaveBeenCalledTimes(2)
+  })
+
   it('shows a retry instead of a partial coach overview when one source fails', async () => {
     performanceMock.failingSection = 'designated_credit'
     render(<StatisticsTab isMobile={false} />)

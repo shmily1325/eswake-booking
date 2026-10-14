@@ -14,6 +14,8 @@ interface DateRangePickerProps {
   showYearButtons?: boolean
   /** 點擊追蹤前綴；設定後會區分各快捷鈕與自訂選擇器 */
   trackPrefix?: string
+  /** 快捷按鈕維持單列，空間不足時橫向滑動 */
+  singleLine?: boolean
 }
 
 /** 快捷鈕：選中近黑，未選中白底描邊（不使用亮綠／亮藍） */
@@ -54,6 +56,7 @@ export function DateRangePicker({
   simplified = false,
   showYearButtons = false,
   trackPrefix,
+  singleLine = false,
 }: DateRangePickerProps) {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [customPickerType, setCustomPickerType] = useState<'month' | 'date'>(
@@ -88,6 +91,7 @@ export function DateRangePicker({
     }
     setShowDatePicker(current => !current)
   }
+  const quickButtonStyle = singleLine ? { flex: '0 0 auto' } : undefined
 
   return (
     <div style={{ width: '100%' }}>
@@ -98,7 +102,15 @@ export function DateRangePicker({
       )}
       
       {/* 快捷按鈕 */}
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: simplified && !showDatePicker ? '0' : '12px' }}>
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        flexWrap: singleLine ? 'nowrap' : 'wrap',
+        overflowX: singleLine ? 'auto' : undefined,
+        paddingBottom: singleLine ? 2 : undefined,
+        marginBottom: simplified && !showDatePicker ? '0' : '12px',
+        WebkitOverflowScrolling: singleLine ? 'touch' : undefined,
+      }}>
         {showYearButtons && (
           <>
             <button
@@ -108,7 +120,7 @@ export function DateRangePicker({
                 onDateChange(currentYearStr)
                 setShowDatePicker(false)
               }}
-              style={presetButtonStyle(isCurrentYear, isMobile)}
+              style={presetButtonStyle(isCurrentYear, isMobile, quickButtonStyle)}
               aria-pressed={isCurrentYear}
             >
               今年累計
@@ -120,7 +132,7 @@ export function DateRangePicker({
                 onDateChange(lastYearStr)
                 setShowDatePicker(false)
               }}
-              style={presetButtonStyle(isLastYear, isMobile)}
+              style={presetButtonStyle(isLastYear, isMobile, quickButtonStyle)}
               aria-pressed={isLastYear}
             >
               去年
@@ -135,7 +147,7 @@ export function DateRangePicker({
               onDateChange(getVenueDateString())
               setShowDatePicker(false)
             }}
-            style={presetButtonStyle(isToday, isMobile)}
+            style={presetButtonStyle(isToday, isMobile, quickButtonStyle)}
             aria-pressed={isToday}
           >
             今天
@@ -148,7 +160,7 @@ export function DateRangePicker({
             onDateChange(currentMonth)
             setShowDatePicker(false)
           }}
-          style={presetButtonStyle(isCurrentMonth, isMobile)}
+          style={presetButtonStyle(isCurrentMonth, isMobile, quickButtonStyle)}
           aria-pressed={isCurrentMonth}
         >
           本月
@@ -160,7 +172,7 @@ export function DateRangePicker({
             onDateChange(lastMonthStr)
             setShowDatePicker(false)
           }}
-          style={presetButtonStyle(isLastMonth, isMobile)}
+          style={presetButtonStyle(isLastMonth, isMobile, quickButtonStyle)}
           aria-pressed={isLastMonth}
         >
           上個月
@@ -175,7 +187,7 @@ export function DateRangePicker({
             style={presetButtonStyle(
               isCustomDate || showDatePicker,
               isMobile,
-              { flex: isMobile ? '1 1 100%' : 'none' }
+              { flex: singleLine ? '0 0 auto' : isMobile ? '1 1 100%' : 'none' }
             )}
             aria-expanded={showDatePicker}
           >

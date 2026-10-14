@@ -126,6 +126,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   })
   const [performanceErrors, setPerformanceErrors] = useState<Partial<Record<PerformanceLedgerSection, string>>>({})
   const serviceRequestRef = useRef(0)
+  const serviceDataKeyRef = useRef<string | null>(null)
 
   const handlePerformanceDataChange = useCallback((
     section: PerformanceLedgerSection,
@@ -174,6 +175,9 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   useEffect(() => {
     setServiceStatus('idle')
     setServiceError(null)
+  }, [autoFilterCoachId, selectedDate])
+
+  useEffect(() => {
     setPerformanceRows({
       designated_lesson: [],
       designated_credit: [],
@@ -188,21 +192,34 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   }, [selectedCoachId, selectedDate])
 
   useEffect(() => {
+    setCoachStats(
+      selectedCoachId === 'all'
+        ? allCoachStats
+        : allCoachStats.filter((coach) => coach.coachId === selectedCoachId),
+    )
+  }, [allCoachStats, selectedCoachId])
+
+  useEffect(() => {
     if (reportKind !== 'service' && reportKind !== 'coach_overview') {
       serviceRequestRef.current += 1
       setLoading(false)
       setServiceStatus((current) => current === 'loading' ? 'idle' : current)
       return
     }
+    const serviceDataKey = `${selectedDate}|${autoFilterCoachId ?? 'admin'}`
+    if (serviceDataKeyRef.current === serviceDataKey && serviceStatus === 'success') {
+      setLoading(false)
+      return
+    }
     // 換條件時先清空，避免新資料載入前畫面殘留前條件的統計數字
     setAllCoachStats([])
     setCoachStats([])
-    loadPastData()
+    loadPastData(serviceDataKey)
     // loadPastData reads exactly the filter state listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFilterCoachId, reportKind, selectedDate, selectedCoachId, serviceReloadToken])
+  }, [autoFilterCoachId, reportKind, selectedDate, serviceReloadToken])
 
-  const loadPastData = async () => {
+  const loadPastData = async (serviceDataKey: string) => {
     if (!selectedDate) return
 
     const requestId = ++serviceRequestRef.current
@@ -376,15 +393,9 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
       if (requestId !== serviceRequestRef.current) return
 
-      // 保存完整列表供下拉選單使用
+      // 保存完整列表供教練按鈕與總表共用
+      serviceDataKeyRef.current = serviceDataKey
       setAllCoachStats(statsArray)
-      
-      // 根據選擇過濾顯示
-      const filteredStats = selectedCoachId === 'all' 
-        ? statsArray 
-        : statsArray.filter(s => s.coachId === selectedCoachId)
-
-      setCoachStats(filteredStats)
       setServiceStatus('success')
 
     } catch (error) {
@@ -447,47 +458,60 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
     setPerformanceErrors({})
   }
 
+  const controlRowStyle = {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: isMobile ? designSystem.spacing.sm : designSystem.spacing.md,
+    minWidth: 0,
+  } as const
+  const controlLabelStyle = {
+    ...getLabelStyle(isMobile),
+    flex: `0 0 ${isMobile ? '36px' : '44px'}`,
+    marginBottom: 0,
+    paddingTop: 10,
+  }
+
   const reportKindToggle = (
-    <div style={{ marginTop: isMobile ? 18 : 22 }}>
-      <div style={getLabelStyle(isMobile)}>報表</div>
-      <AdminPillRow>
-      <AdminPillButton
-        active={reportKind === 'service'}
-        onClick={() => setReportKind('service')}
-        data-track="statistics_service_open"
-      >
-        教學／駕駛
-      </AdminPillButton>
-      <AdminPillButton
-        active={reportKind === 'designated_lesson'}
-        onClick={() => setReportKind('designated_lesson')}
-        data-track="statistics_designated_lesson_open"
-      >
-        指定單堂
-      </AdminPillButton>
-      <AdminPillButton
-        active={reportKind === 'designated_credit'}
-        onClick={() => setReportKind('designated_credit')}
-        data-track="statistics_designated_credit_open"
-      >
-        指定售出
-      </AdminPillButton>
-      <AdminPillButton
-        active={reportKind === 'product'}
-        onClick={() => setReportKind('product')}
-        data-track="statistics_product_open"
-      >
-        商品
-      </AdminPillButton>
-      {!autoFilterCoachId && (
+    <div style={controlRowStyle}>
+      <div style={controlLabelStyle}>報表</div>
+      <AdminPillRow style={{ flex: 1, minWidth: 0, padding: 0 }}>
         <AdminPillButton
-          active={reportKind === 'coach_overview'}
-          onClick={() => setReportKind('coach_overview')}
-          data-track="statistics_coach_overview_open"
+          active={reportKind === 'service'}
+          onClick={() => setReportKind('service')}
+          data-track="statistics_service_open"
         >
-          教練總表
+          教學／駕駛
         </AdminPillButton>
-      )}
+        <AdminPillButton
+          active={reportKind === 'designated_lesson'}
+          onClick={() => setReportKind('designated_lesson')}
+          data-track="statistics_designated_lesson_open"
+        >
+          指定單堂
+        </AdminPillButton>
+        <AdminPillButton
+          active={reportKind === 'designated_credit'}
+          onClick={() => setReportKind('designated_credit')}
+          data-track="statistics_designated_credit_open"
+        >
+          指定售出
+        </AdminPillButton>
+        <AdminPillButton
+          active={reportKind === 'product'}
+          onClick={() => setReportKind('product')}
+          data-track="statistics_product_open"
+        >
+          商品
+        </AdminPillButton>
+        {!autoFilterCoachId && (
+          <AdminPillButton
+            active={reportKind === 'coach_overview'}
+            onClick={() => setReportKind('coach_overview')}
+            data-track="statistics_coach_overview_open"
+          >
+            教練總表
+          </AdminPillButton>
+        )}
       </AdminPillRow>
     </div>
   )
@@ -495,24 +519,38 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   return (
     <div>
       <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isMobile ? 12 : 14,
+        padding: isMobile ? designSystem.spacing.md : designSystem.spacing.lg,
+        background: designSystem.colors.background.card,
+        border: `1px solid ${designSystem.colors.border.light}`,
+        borderRadius: designSystem.borderRadius.xl,
+        boxShadow: designSystem.shadows.elevation[1],
         marginBottom: isMobile ? designSystem.spacing.lg : designSystem.spacing.xl,
       }}>
-        <DateRangePicker
-          selectedDate={selectedDate}
-          onDateChange={setSelectedDate}
-          isMobile={isMobile}
-          showTodayButton={!isMobile}
-          label="期間"
-          simplified={true}
-          trackPrefix={autoFilterCoachId ? 'coach_report_ledger_period' : 'admin_statistics_ledger_period'}
-        />
+        <div style={controlRowStyle}>
+          <div style={controlLabelStyle}>期間</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <DateRangePicker
+              selectedDate={selectedDate}
+              onDateChange={setSelectedDate}
+              isMobile={isMobile}
+              showTodayButton={!isMobile}
+              label=""
+              simplified={true}
+              singleLine={true}
+              trackPrefix={autoFilterCoachId ? 'coach_report_ledger_period' : 'admin_statistics_ledger_period'}
+            />
+          </div>
+        </div>
         {reportKindToggle}
 
         {/* 教練篩選 - 教練端固定本人，因此不顯示這一列 */}
         {!autoFilterCoachId && (
-          <div style={{ marginTop: isMobile ? 18 : 22 }}>
-            <div style={getLabelStyle(isMobile)}>教練</div>
-            <AdminPillRow>
+          <div style={controlRowStyle}>
+            <div style={controlLabelStyle}>教練</div>
+            <AdminPillRow style={{ flex: 1, minWidth: 0, padding: 0 }}>
               <AdminPillButton
                 active={selectedCoachId === 'all'}
                 onClick={() => setSelectedCoachId('all')}
@@ -574,6 +612,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       {activePerformanceSection && (
         <div hidden={reportKind === 'coach_overview'}>
           <PerformanceStatistics
+            key={`${selectedDate}-${selectedCoachId}-${activePerformanceSection}`}
             isMobile={isMobile}
             section={activePerformanceSection}
             selectedDate={selectedDate}
