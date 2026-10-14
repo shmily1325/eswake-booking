@@ -39,6 +39,12 @@ import type {
 } from '../../types/booking'
 import type { Database } from '../../types/supabase'
 import { syncCoachDesignatedReportDeductions } from './designatedHours/api'
+import {
+  clearPendingDesignatedSync,
+  readPendingDesignatedSync,
+  savePendingDesignatedSync,
+  type PendingDesignatedSync,
+} from './designatedHours/pendingSyncStorage'
 
 const PAYMENT_METHODS = [
   { value: 'cash', label: '現金' },
@@ -46,20 +52,6 @@ const PAYMENT_METHODS = [
   { value: 'balance', label: '扣儲值' },
   { value: 'voucher', label: '票券' }
 ]
-
-type DesignatedSyncItem = {
-  participant_id: number
-  deduct: boolean
-  minutes: number
-  regular_minutes: number
-  gift_minutes: number
-}
-
-type PendingDesignatedSync = {
-  bookingId: number
-  coachId: string
-  items: DesignatedSyncItem[]
-}
 
 const LESSON_TYPES = [
   { value: 'undesignated', label: '不指定' },
@@ -129,7 +121,15 @@ export function CoachReport({
   
   // 提交狀態
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [pendingDesignatedSync, setPendingDesignatedSync] = useState<PendingDesignatedSync | null>(null)
+  const [pendingDesignatedSync, setPendingDesignatedSync] = useState<PendingDesignatedSync | null>(
+    () => readPendingDesignatedSync(user?.email),
+  )
+
+  useEffect(() => {
+    if (pendingDesignatedSync || !user?.email) return
+    const restored = readPendingDesignatedSync(user.email)
+    if (restored) setPendingDesignatedSync(restored)
+  }, [pendingDesignatedSync, user?.email])
 
   // 載入教練列表
   useEffect(() => {
@@ -589,6 +589,7 @@ export function CoachReport({
         pendingDesignatedSync.coachId,
         pendingDesignatedSync.items,
       )
+      clearPendingDesignatedSync()
       setPendingDesignatedSync(null)
       toast.success('指定課已同步')
       setReportingBookingId(null)
@@ -915,13 +916,18 @@ export function CoachReport({
         }
       })
       if (designatedItems.length > 0) {
-        setPendingDesignatedSync({
+        const pendingSync: PendingDesignatedSync = {
           bookingId: reportingBookingId,
           coachId: reportingCoachId,
+          actorEmail: user?.email || '',
+          savedAt: Date.now(),
           items: designatedItems,
-        })
+        }
+        savePendingDesignatedSync(pendingSync)
+        setPendingDesignatedSync(pendingSync)
         try {
           await syncCoachDesignatedReportDeductions(reportingCoachId, designatedItems)
+          clearPendingDesignatedSync()
           setPendingDesignatedSync(null)
         } catch (designatedError) {
           console.error('同步指定課時數失敗:', designatedError)
@@ -932,12 +938,16 @@ export function CoachReport({
           )
         }
       } else {
-        setPendingDesignatedSync((current) =>
-          current?.bookingId === reportingBookingId
-          && current.coachId === reportingCoachId
-            ? null
-            : current
-        )
+        setPendingDesignatedSync((current) => {
+          if (
+            current?.bookingId === reportingBookingId
+            && current.coachId === reportingCoachId
+          ) {
+            clearPendingDesignatedSync()
+            return null
+          }
+          return current
+        })
       }
     } catch (error) {
       console.error('提交教練回報失敗:', error)

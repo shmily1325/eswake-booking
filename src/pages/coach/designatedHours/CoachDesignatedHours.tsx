@@ -2048,9 +2048,14 @@ function EntryList({
                   color: designSystem.colors.text.secondary,
                   fontSize: getFontSize('bodySmall', isMobile),
                   fontWeight: 600,
+                  display: 'grid',
+                  gridTemplateColumns: `minmax(0, 1fr) auto ${isMobile ? '58px' : '72px'}`,
+                  columnGap: isMobile ? 10 : 16,
+                  alignItems: 'center',
                 }}
               >
-                {monthLabel}
+                <span style={{ gridColumn: '1 / 3' }}>{monthLabel}</span>
+                <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>餘額（分）</span>
               </div>
             )}
             <button
@@ -2067,8 +2072,9 @@ function EntryList({
                   ? `1px solid ${designSystem.colors.border.light}`
                   : 0,
                 background: designSystem.colors.background.card,
-                display: 'flex',
-                justifyContent: 'space-between',
+                display: 'grid',
+                gridTemplateColumns: `minmax(0, 1fr) auto ${isMobile ? '58px' : '72px'}`,
+                columnGap: isMobile ? 10 : 16,
                 alignItems: 'center',
                 textAlign: 'left',
                 cursor: 'pointer',
@@ -2093,42 +2099,37 @@ function EntryList({
               </span>
               <span
                 style={{
-                  flexShrink: 0,
-                  marginLeft: 12,
+                  textAlign: 'right',
+                  fontWeight: 700,
+                  color: entry.delta_minutes >= 0
+                    ? designSystem.colors.success[700]
+                    : designSystem.colors.text.primary,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {entry.delta_minutes >= 0 ? '+' : '−'}{Math.abs(entry.delta_minutes)}
+              </span>
+              <span
+                style={{
+                  justifySelf: 'end',
+                  display: 'inline-block',
+                  padding: balanceAfter < 0 ? '2px 7px' : 0,
+                  borderRadius: designSystem.borderRadius.full,
+                  background: balanceAfter < 0
+                    ? designSystem.colors.danger[50]
+                    : 'transparent',
+                  color: balanceAfter < 0
+                    ? designSystem.colors.danger[700]
+                    : designSystem.colors.text.secondary,
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  fontWeight: balanceAfter < 0 ? 700 : 500,
+                  fontVariantNumeric: 'tabular-nums',
+                  whiteSpace: 'nowrap',
                   textAlign: 'right',
                 }}
               >
-                <span
-                  style={{
-                    display: 'block',
-                    fontWeight: 700,
-                    color: entry.delta_minutes >= 0
-                      ? designSystem.colors.success[700]
-                      : designSystem.colors.text.primary,
-                  }}
-                >
-                  {entry.delta_minutes >= 0 ? '+' : '−'}{Math.abs(entry.delta_minutes)} 分
-                </span>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    marginTop: 4,
-                    padding: balanceAfter < 0 ? '2px 7px' : 0,
-                    borderRadius: designSystem.borderRadius.full,
-                    background: balanceAfter < 0
-                      ? designSystem.colors.danger[50]
-                      : 'transparent',
-                    color: balanceAfter < 0
-                      ? designSystem.colors.danger[700]
-                      : designSystem.colors.text.secondary,
-                    fontSize: getFontSize('caption', isMobile),
-                    fontWeight: balanceAfter < 0 ? 700 : 500,
-                    fontVariantNumeric: 'tabular-nums',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {balanceAfter} 分
-                </span>
+                {balanceAfter}
               </span>
             </button>
           </div>

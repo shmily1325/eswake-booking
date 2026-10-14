@@ -169,6 +169,50 @@ describe('CoachDesignatedHours', () => {
     expect(screen.queryByRole('button', { name: '重設今天' })).not.toBeInTheDocument()
   })
 
+  it('groups the ledger by month with one balance heading per group', async () => {
+    mockedFetchDetail.mockResolvedValueOnce({
+      balance: 300,
+      regular_balance: 300,
+      gift_balance: 0,
+      has_gift_entries: false,
+      regular_expires_on: null,
+      gift_expires_on: null,
+      entries: [{
+        id: 2,
+        entry_type: 'report_deduction',
+        minutes: 30,
+        regular_minutes: 30,
+        gift_minutes: 0,
+        delta_minutes: -30,
+        occurred_at: '2026-10-11T08:00:00+08:00',
+        expires_on: null,
+        note: null,
+        booking_participant_id: 123,
+        booking_start_at: '2026-10-11T08:00:00+08:00',
+        boat_name: 'G21',
+      }, {
+        id: 1,
+        entry_type: 'credit',
+        minutes: 330,
+        regular_minutes: 330,
+        gift_minutes: 0,
+        delta_minutes: 330,
+        occurred_at: '2026-09-01T12:00:00+08:00',
+        expires_on: null,
+        note: null,
+        booking_participant_id: null,
+      }],
+    })
+
+    render(<CoachDesignatedHours coachId="coach-1" isMobile />)
+
+    fireEvent.click(await screen.findByText('Penny'))
+    expect(await screen.findByText(/2026年10月/)).toBeInTheDocument()
+    expect(screen.getByText(/2026年9月/)).toBeInTheDocument()
+    expect(screen.getAllByText('餘額（分）')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: '扣除 30 分，餘額 300 分' })).toBeInTheDocument()
+  })
+
   it('can split one backfilled report between regular and gift minutes', async () => {
     mockedFetchStudents.mockResolvedValueOnce([{
       member_id: 'member-1',

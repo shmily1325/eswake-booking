@@ -138,7 +138,7 @@ export function CoachDesignatedHistoryModal({
         {loading ? (
           <div style={{ padding: 40, textAlign: 'center', color: LIFF_THEME.muted }}>載入中...</div>
         ) : entries.length === 0 ? (
-          <div style={{ padding: 40, textAlign: 'center', color: LIFF_THEME.muted }}>尚無時數紀錄</div>
+          <div style={{ padding: 40, textAlign: 'center', color: LIFF_THEME.muted }}>最近兩個月無指定課紀錄</div>
         ) : (
           <>
           {hasSplitSummary && (
@@ -158,10 +158,10 @@ export function CoachDesignatedHistoryModal({
               const regular = entry.regular_minutes ?? entry.minutes
               const gift = entry.gift_minutes ?? 0
               const source = regular > 0 && gift > 0
-                ? `指定課 ${regular}・贈送 ${gift}`
+                ? `含贈送 ${gift} 分`
                 : gift > 0
                   ? '贈送'
-                  : '指定課'
+                  : null
               const occurredAt = entry.booking_start_at || entry.occurred_at
               const displayDate = entry.entry_type === 'credit'
                 ? entry.occurred_at.slice(0, 10).replaceAll('-', '/')
@@ -196,17 +196,17 @@ export function CoachDesignatedHistoryModal({
                       ? (entry.note || '新增指定課')
                       : (entry.boat_name || '未指定船')}
                   </div>
-                  <div
-                    style={{
-                      marginTop: 4,
-                      color: gift > 0
-                        ? designSystem.colors.warning[700]
-                        : designSystem.colors.info[700],
-                      fontSize: getFontSizePx('caption', true),
-                    }}
-                  >
-                    {source}
-                  </div>
+                  {source && (
+                    <div
+                      style={{
+                        marginTop: 4,
+                        color: designSystem.colors.warning[700],
+                        fontSize: getFontSizePx('caption', true),
+                      }}
+                    >
+                      {source}
+                    </div>
+                  )}
                   {entry.entry_type === 'credit' && entry.expires_on && (
                     <div
                       style={{
@@ -241,7 +241,7 @@ export function CoachDesignatedHistoryModal({
               fontWeight: 600,
             }}
           >
-            查看全部紀錄
+            顯示更多紀錄
           </button>
         )}
       </div>

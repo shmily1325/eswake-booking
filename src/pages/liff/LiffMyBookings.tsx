@@ -399,6 +399,16 @@ export function LiffMyBookings() {
         .then((result) => {
           setCoachDesignatedEntries(result.entries)
           setCoachDesignatedTotal(result.total)
+          liffTrack({
+            icon_id: 'liff_coach_designated_history_loaded',
+            line_user_id: lineUserId,
+            member_id: member.id,
+            extras: {
+              coach_id: coachId,
+              visible_count: result.entries.length,
+              total_count: result.total,
+            },
+          })
           setSelectedCoachDesignated((current) => current
             ? {
                 ...current,
@@ -413,6 +423,12 @@ export function LiffMyBookings() {
         })
         .catch((err) => {
           console.error('載入教練指定課明細失敗:', err)
+          liffTrack({
+            icon_id: 'liff_coach_designated_history_failed',
+            line_user_id: lineUserId,
+            member_id: member.id,
+            extras: { coach_id: coachId },
+          })
           toast.error('載入指定課明細失敗')
         })
         .finally(() => setLoadingCoachDesignated(false))
@@ -611,13 +627,24 @@ export function LiffMyBookings() {
         regularExpiresOn={selectedCoachDesignated?.regular_expires_on ?? null}
         giftExpiresOn={selectedCoachDesignated?.gift_expires_on ?? null}
         loading={loadingCoachDesignated}
-        onClose={() => setSelectedCoachDesignated(null)}
+        onClose={() => {
+          if (selectedCoachDesignated) {
+            liffTrack({
+              icon_id: 'liff_coach_designated_history_close',
+              line_user_id: lineUserId,
+              member_id: member?.id,
+              extras: { coach_id: selectedCoachDesignated.coach_id },
+            })
+          }
+          setSelectedCoachDesignated(null)
+        }}
         onLoadAll={async () => {
           if (!selectedCoachDesignated) return
           liffTrack({
             icon_id: 'liff_coach_designated_history_all',
             line_user_id: lineUserId,
             member_id: member?.id,
+            extras: { coach_id: selectedCoachDesignated.coach_id },
           })
           setLoadingCoachDesignated(true)
           try {
@@ -640,6 +667,15 @@ export function LiffMyBookings() {
             }
             setCoachDesignatedEntries(allEntries)
             setCoachDesignatedTotal(firstPage.total)
+            liffTrack({
+              icon_id: 'liff_coach_designated_history_all_loaded',
+              line_user_id: lineUserId,
+              member_id: member?.id,
+              extras: {
+                coach_id: selectedCoachDesignated.coach_id,
+                visible_count: allEntries.length,
+              },
+            })
             setSelectedCoachDesignated((current) => current
               ? {
                   ...current,
@@ -653,6 +689,12 @@ export function LiffMyBookings() {
               : current)
           } catch (err) {
             console.error('載入全部指定課明細失敗:', err)
+            liffTrack({
+              icon_id: 'liff_coach_designated_history_all_failed',
+              line_user_id: lineUserId,
+              member_id: member?.id,
+              extras: { coach_id: selectedCoachDesignated.coach_id },
+            })
             toast.error('載入全部指定課明細失敗')
           } finally {
             setLoadingCoachDesignated(false)

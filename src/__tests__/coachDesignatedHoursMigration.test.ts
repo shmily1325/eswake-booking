@@ -30,7 +30,11 @@ const negativeBackfillSql = readFileSync(
   resolve(process.cwd(), 'migrations/256_allow_negative_designated_backfill.sql'),
   'utf8',
 )
-const combined = `${schemaSql}\n${rpcSql}\n${splitSql}\n${expirySummarySql}\n${safeBackfillSql}\n${adminOverviewSql}\n${negativeBackfillSql}`.toLowerCase()
+const liffHistoryWindowSql = readFileSync(
+  resolve(process.cwd(), 'migrations/257_align_liff_designated_history_window.sql'),
+  'utf8',
+)
+const combined = `${schemaSql}\n${rpcSql}\n${splitSql}\n${expirySummarySql}\n${safeBackfillSql}\n${adminOverviewSql}\n${negativeBackfillSql}\n${liffHistoryWindowSql}`.toLowerCase()
 
 describe('coach designated-hour migrations', () => {
   it('keeps the new ledger isolated from existing financial storage', () => {
@@ -100,6 +104,22 @@ describe('coach designated-hour migrations', () => {
   it('keeps non-zero LIFF balances visible regardless of recent activity', () => {
     expect(splitSql).toMatch(
       /HAVING[\s\S]*e\.regular_minutes[\s\S]*<> 0[\s\S]*e\.gift_minutes[\s\S]*<> 0[\s\S]*INTERVAL '2 months'/i,
+    )
+  })
+
+  it('uses actual entry dates for the LIFF 60-day history window without changing total balances', () => {
+    expect(liffHistoryWindowSql).toContain("AT TIME ZONE 'Asia/Taipei'")
+    expect(liffHistoryWindowSql).toMatch(
+      /HAVING[\s\S]*regular_minutes[\s\S]*<> 0[\s\S]*gift_minutes[\s\S]*<> 0[\s\S]*MAX\(e\.occurred_at\)/i,
+    )
+    expect(liffHistoryWindowSql).toMatch(
+      /SELECT COUNT\(\*\)::INTEGER[\s\S]*e\.occurred_at >= \(v_since_date::TIMESTAMP AT TIME ZONE 'Asia\/Taipei'\)/i,
+    )
+    expect(liffHistoryWindowSql).toMatch(
+      /SELECT[\s\S]*COALESCE\(SUM\([\s\S]*INTO v_regular_balance, v_gift_balance[\s\S]*SELECT COUNT\(\*\)::INTEGER/i,
+    )
+    expect(liffHistoryWindowSql).toMatch(
+      /get_liff_coach_designated_history[\s\S]*e\.occurred_at >= \(v_since_date::TIMESTAMP AT TIME ZONE 'Asia\/Taipei'\)[\s\S]*'balance', v_regular_balance \+ v_gift_balance/i,
     )
   })
 

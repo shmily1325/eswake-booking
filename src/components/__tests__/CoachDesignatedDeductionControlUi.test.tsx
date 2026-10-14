@@ -26,15 +26,26 @@ function Harness() {
   } as Participant)
 
   return (
-    <CoachDesignatedDeductionControl
-      coachId="coach-jerry"
-      participant={participant}
-      participantIndex={0}
-      isMobile={false}
-      onUpdate={(_index, field, value) => {
-        setParticipant((current) => ({ ...current, [field]: value }))
-      }}
-    />
+    <>
+      <button
+        type="button"
+        onClick={() => setParticipant((current) => ({
+          ...current,
+          duration_min: current.duration_min + 30,
+        }))}
+      >
+        增加課程分鐘
+      </button>
+      <CoachDesignatedDeductionControl
+        coachId="coach-jerry"
+        participant={participant}
+        participantIndex={0}
+        isMobile={false}
+        onUpdate={(_index, field, value) => {
+          setParticipant((current) => ({ ...current, [field]: value }))
+        }}
+      />
+    </>
   )
 }
 
@@ -114,5 +125,67 @@ describe('CoachDesignatedDeductionControl balance preview', () => {
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('checkbox', { name: '本次扣除時數' })).not.toBeInTheDocument()
+  })
+
+  it('follows duration changes until deduction minutes are manually edited', async () => {
+    mockedFetchContext.mockResolvedValueOnce({
+      balance: 330,
+      regular_balance: 330,
+      gift_balance: 0,
+      has_gift_entries: false,
+      has_entries: true,
+      deduction_minutes: null,
+      deduction_regular_minutes: null,
+      deduction_gift_minutes: null,
+      deduction_decided: false,
+      explicit_no_deduction: false,
+    })
+
+    render(<Harness />)
+
+    const minutesInput = await screen.findByLabelText('本次扣除分鐘')
+    expect(minutesInput).toHaveValue('60')
+
+    fireEvent.click(screen.getByRole('button', { name: '增加課程分鐘' }))
+    expect(minutesInput).toHaveValue('90')
+
+    fireEvent.change(minutesInput, { target: { value: '30' } })
+    fireEvent.click(screen.getByRole('button', { name: '增加課程分鐘' }))
+    expect(minutesInput).toHaveValue('30')
+  })
+
+  it('does not silently change a previously saved deduction', async () => {
+    render(<Harness />)
+
+    const minutesInput = await screen.findByLabelText('本次扣除分鐘')
+    expect(minutesInput).toHaveValue('60')
+
+    fireEvent.click(screen.getByRole('button', { name: '增加課程分鐘' }))
+    expect(minutesInput).toHaveValue('60')
+  })
+
+  it('automatically retries one transient context load failure', async () => {
+    mockedFetchContext
+      .mockRejectedValueOnce(new Error('temporary network error'))
+      .mockResolvedValueOnce({
+        balance: 70,
+        regular_balance: 70,
+        gift_balance: 0,
+        has_gift_entries: false,
+        has_entries: true,
+        deduction_minutes: 60,
+        deduction_regular_minutes: 60,
+        deduction_gift_minutes: 0,
+        deduction_decided: true,
+        explicit_no_deduction: false,
+      })
+
+    render(<Harness />)
+
+    await waitFor(() => expect(mockedFetchContext).toHaveBeenCalledTimes(2), {
+      timeout: 2000,
+    })
+    expect(await screen.findByText('扣除後總剩餘 70 分鐘')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重新載入' })).not.toBeInTheDocument()
   })
 })

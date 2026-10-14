@@ -33,10 +33,16 @@ export function CoachDesignatedDeductionControl({
   const [loadError, setLoadError] = useState(false)
   const [shouldShow, setShouldShow] = useState(false)
   const [reloadToken, setReloadToken] = useState(0)
-  const loadedKeyRef = useRef<string | null>(null)
   const expansionInitializedKeyRef = useRef<string | null>(null)
+  const activeLoadKeyRef = useRef<string | null>(null)
+  const deductionEditedRef = useRef(false)
+  const previousDurationRef = useRef<number | null>(null)
+  const participantRef = useRef(participant)
+  participantRef.current = participant
   const onUpdateRef = useRef(onUpdate)
   onUpdateRef.current = onUpdate
+  const participantIndexRef = useRef(participantIndex)
+  participantIndexRef.current = participantIndex
 
   const memberId = participant.member_id
   const eligible = participant.lesson_type === 'designated_free' && !!memberId
@@ -44,8 +50,11 @@ export function CoachDesignatedDeductionControl({
   useEffect(() => {
     if (!eligible || !memberId) return
     const loadKey = `${coachId}:${memberId}:${participant.id}`
-    if (loadedKeyRef.current === loadKey) return
-    loadedKeyRef.current = loadKey
+    if (activeLoadKeyRef.current !== loadKey) {
+      activeLoadKeyRef.current = loadKey
+      deductionEditedRef.current = false
+      previousDurationRef.current = participantRef.current.duration_min
+    }
     setOriginalRegularDeduction(0)
     setOriginalGiftDeduction(0)
     setShouldShow(true)
@@ -54,13 +63,29 @@ export function CoachDesignatedDeductionControl({
     const load = async () => {
       setLoading(true)
       setLoadError(false)
+      let lastError: unknown = null
       try {
-        const context = await fetchCoachDesignatedMemberContext(
-          coachId,
-          memberId,
-          participant.id > 0 ? participant.id : null,
-        )
+        let context: Awaited<ReturnType<typeof fetchCoachDesignatedMemberContext>> | null = null
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            context = await fetchCoachDesignatedMemberContext(
+              coachId,
+              memberId,
+              participantRef.current.id > 0 ? participantRef.current.id : null,
+            )
+            break
+          } catch (error) {
+            lastError = error
+            if (attempt === 0) {
+              await new Promise((resolve) => window.setTimeout(resolve, 600))
+              if (cancelled) return
+            }
+          }
+        }
+        if (!context) throw lastError
         if (cancelled) return
+        const currentParticipant = participantRef.current
+        const currentIndex = participantIndexRef.current
         setBalance(context.balance)
         setRegularBalance(context.regular_balance)
         setGiftBalance(context.gift_balance)
@@ -71,6 +96,7 @@ export function CoachDesignatedDeductionControl({
           ?? 0,
         )
         setOriginalGiftDeduction(context.deduction_gift_minutes ?? 0)
+        deductionEditedRef.current = context.deduction_minutes != null
         setShouldShow(shouldShowCoachDesignatedControl(context.has_entries, false))
         if (
           context.has_entries
@@ -80,17 +106,17 @@ export function CoachDesignatedDeductionControl({
           setExpanded(true)
         }
 
-        if (!participant.designated_hours_initialized) {
+        if (!currentParticipant.designated_hours_initialized) {
           const existingDeduction = context.deduction_minutes
           const defaultToGift = existingDeduction == null
             && context.regular_balance === 0
             && context.gift_balance !== 0
           const regularMinutes = context.deduction_regular_minutes
-            ?? (defaultToGift ? 0 : participant.duration_min)
+            ?? (defaultToGift ? 0 : currentParticipant.duration_min)
           const giftMinutes = context.deduction_gift_minutes
-            ?? (defaultToGift ? participant.duration_min : 0)
+            ?? (defaultToGift ? currentParticipant.duration_min : 0)
           onUpdateRef.current(
-            participantIndex,
+            currentIndex,
             'designated_hours_deduct',
             defaultCoachDesignatedDeduction(
               context.regular_balance !== 0 || context.gift_balance !== 0
@@ -101,21 +127,21 @@ export function CoachDesignatedDeductionControl({
             ),
           )
           onUpdateRef.current(
-            participantIndex,
+            currentIndex,
             'designated_hours_minutes',
-            existingDeduction ?? participant.duration_min,
+            existingDeduction ?? currentParticipant.duration_min,
           )
           onUpdateRef.current(
-            participantIndex,
+            currentIndex,
             'designated_hours_regular_minutes',
             regularMinutes,
           )
           onUpdateRef.current(
-            participantIndex,
+            currentIndex,
             'designated_hours_gift_minutes',
             giftMinutes,
           )
-          onUpdateRef.current(participantIndex, 'designated_hours_initialized', true)
+          onUpdateRef.current(currentIndex, 'designated_hours_initialized', true)
         }
       } catch (error) {
         console.error('載入指定課時數失敗:', error)
@@ -136,11 +162,46 @@ export function CoachDesignatedDeductionControl({
     coachId,
     eligible,
     memberId,
-    participant.designated_hours_initialized,
     participant.id,
-    participant.duration_min,
-    participantIndex,
     reloadToken,
+  ])
+
+  useEffect(() => {
+    const duration = Number(participant.duration_min)
+    const previousDuration = previousDurationRef.current
+    previousDurationRef.current = duration
+    if (
+      !eligible
+      || previousDuration == null
+      || previousDuration === duration
+      || participant.designated_hours_initialized !== true
+      || deductionEditedRef.current
+    ) return
+
+    const currentGift = participant.designated_hours_gift_minutes ?? 0
+    const useGift = currentGift > 0
+      && (participant.designated_hours_regular_minutes ?? 0) === 0
+    onUpdateRef.current(
+      participantIndexRef.current,
+      'designated_hours_regular_minutes',
+      useGift ? 0 : duration,
+    )
+    onUpdateRef.current(
+      participantIndexRef.current,
+      'designated_hours_gift_minutes',
+      useGift ? duration : 0,
+    )
+    onUpdateRef.current(
+      participantIndexRef.current,
+      'designated_hours_minutes',
+      duration,
+    )
+  }, [
+    eligible,
+    participant.designated_hours_gift_minutes,
+    participant.designated_hours_initialized,
+    participant.designated_hours_regular_minutes,
+    participant.duration_min,
   ])
 
   if (!eligible || !shouldShow) return null
@@ -162,6 +223,7 @@ export function CoachDesignatedDeductionControl({
   const split = regularMinutes > 0 && giftMinutes > 0
 
   const setAllocation = (regular: number, gift: number) => {
+    deductionEditedRef.current = true
     onUpdate(participantIndex, 'designated_hours_regular_minutes', regular)
     onUpdate(participantIndex, 'designated_hours_gift_minutes', gift)
     onUpdate(participantIndex, 'designated_hours_minutes', regular + gift)
@@ -435,10 +497,7 @@ export function CoachDesignatedDeductionControl({
           <button
             type="button"
             data-track="coach_designated_report_retry_load"
-            onClick={() => {
-              loadedKeyRef.current = null
-              setReloadToken((value) => value + 1)
-            }}
+            onClick={() => setReloadToken((value) => value + 1)}
             style={getButtonStyle('outline', 'small', isMobile)}
           >
             重新載入
