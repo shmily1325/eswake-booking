@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllInBatches, fetchAllPaginated } from '../utils/supabasePaginate'
 import { designSystem, getFontSize } from '../styles/designSystem'
+import type { CoachLedgerMetricRow } from './coachLedgerTypes'
 
 interface Props {
   isMobile: boolean
   selectedDate: string
   selectedCoachId: string
+  onDataChange?: (rows: CoachLedgerMetricRow[]) => void
 }
 
 interface SnapshotLine {
@@ -120,7 +122,12 @@ export function buildSalespersonGroups(
     .sort((a, b) => b.total - a.total || b.qty - a.qty || a.name.localeCompare(b.name))
 }
 
-export function ProductSalesStatistics({ isMobile, selectedDate, selectedCoachId }: Props) {
+export function ProductSalesStatistics({
+  isMobile,
+  selectedDate,
+  selectedCoachId,
+  onDataChange,
+}: Props) {
   const [groups, setGroups] = useState<SalespersonGroup[]>([])
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(false)
@@ -225,6 +232,16 @@ export function ProductSalesStatistics({ isMobile, selectedDate, selectedCoachId
   const assignedGroups = visibleGroups.filter((group) => group.id !== 'unassigned')
   const unassignedGroup = visibleGroups.find((group) => group.id === 'unassigned')
   const maxAssignedTotal = Math.max(1, ...assignedGroups.map((group) => group.total))
+
+  useEffect(() => {
+    onDataChange?.(visibleGroups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      value: group.total,
+      count: group.qty,
+    })))
+  }, [onDataChange, visibleGroups])
+
   const toggleGroup = (groupId: string) => {
     setExpandedGroupIds((current) => {
       const next = new Set(current)

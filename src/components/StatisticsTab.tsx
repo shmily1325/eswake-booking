@@ -6,7 +6,7 @@
  *    coach detail list uses type weight over colored pills.
  * 3. Primary task: review teaching/driving hours for a period — props/API unchanged.
  */
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllPaginated } from '../utils/supabasePaginate'
 import { extractDate, extractTime, getLocalDateString } from '../utils/formatters'
@@ -15,6 +15,12 @@ import { DateRangePicker } from './DateRangePicker'
 import { designSystem, getCardStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { AdminPillButton, AdminPillRow } from './AdminPageLayout'
 import { PerformanceStatistics } from './PerformanceStatistics'
+import { CoachLedgerOverview } from './CoachLedgerOverview'
+import type {
+  CoachLedgerMetricRows,
+  CoachLedgerSection,
+  PerformanceLedgerSection,
+} from './coachLedgerTypes'
 
 interface CoachStats {
   coachId: string
@@ -78,7 +84,7 @@ interface StatisticsTabProps {
 
 export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProps) {
   const toast = useToast()
-  const [reportKind, setReportKind] = useState<'service' | 'performance'>('service')
+  const [reportKind, setReportKind] = useState<CoachLedgerSection>('service')
   // 如果是教練專用模式，預設顯示本月；否則顯示今天
   const [selectedDate, setSelectedDate] = useState(() => {
     if (autoFilterCoachId) {
@@ -92,6 +98,31 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   const [allCoachStats, setAllCoachStats] = useState<CoachStats[]>([]) // 完整列表
   const [coachStats, setCoachStats] = useState<CoachStats[]>([]) // 顯示用的過濾列表
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null)
+  const [performanceRows, setPerformanceRows] = useState<CoachLedgerMetricRows>({
+    designated_lesson: [],
+    designated_credit: [],
+    product: [],
+  })
+
+  const handlePerformanceDataChange = useCallback((
+    section: PerformanceLedgerSection,
+    rows: CoachLedgerMetricRows[PerformanceLedgerSection],
+  ) => {
+    setPerformanceRows((current) => {
+      const previous = current[section]
+      if (
+        previous.length === rows.length
+        && previous.every((row, index) => (
+          row.id === rows[index]?.id
+          && row.value === rows[index]?.value
+          && row.count === rows[index]?.count
+          && row.regularValue === rows[index]?.regularValue
+          && row.giftValue === rows[index]?.giftValue
+        ))
+      ) return current
+      return { ...current, [section]: rows }
+    })
+  }, [])
 
   // 當 autoFilterCoachId 改變時，更新 selectedCoachId
   useEffect(() => {
@@ -101,14 +132,13 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   }, [autoFilterCoachId])
 
   useEffect(() => {
-    if (reportKind !== 'service') return
     // 換條件時先清空，避免新資料載入前畫面殘留前條件的統計數字
     setAllCoachStats([])
     setCoachStats([])
     loadPastData()
     // loadPastData reads exactly the filter state listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFilterCoachId, reportKind, selectedDate, selectedCoachId])
+  }, [autoFilterCoachId, selectedDate, selectedCoachId])
 
   const loadPastData = async () => {
     if (!selectedDate) return
@@ -309,6 +339,16 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   const totalTeachingMinutes = coachStats.reduce((sum, s) => sum + s.teachingMinutes, 0)
   const totalDrivingMinutes = coachStats.reduce((sum, s) => sum + s.drivingMinutes, 0)
   const totalBookings = new Set(coachStats.flatMap(s => s.details.map(d => d.bookingId))).size
+  const coachOptions = useMemo(() => {
+    const options = new Map<string, string>()
+    allCoachStats.forEach((coach) => options.set(coach.coachId, coach.coachName))
+    Object.values(performanceRows).flat().forEach((coach) => options.set(coach.id, coach.name))
+    return [...options.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .filter((coach) => coach.id !== 'unassigned')
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [allCoachStats, performanceRows])
+
   const reportKindToggle = (
     <AdminPillRow style={{ marginBottom: isMobile ? 16 : 20 }}>
       <AdminPillButton
@@ -318,25 +358,28 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
         教學／駕駛
       </AdminPillButton>
       <AdminPillButton
-        active={reportKind === 'performance'}
-        onClick={() => setReportKind('performance')}
-        data-track={autoFilterCoachId
-          ? 'coach_report_performance_open'
-          : 'admin_statistics_performance_open'}
+        active={reportKind === 'designated_lesson'}
+        onClick={() => setReportKind('designated_lesson')}
+        data-track="statistics_designated_lesson_open"
       >
-        業績
+        指定單堂
+      </AdminPillButton>
+      <AdminPillButton
+        active={reportKind === 'designated_credit'}
+        onClick={() => setReportKind('designated_credit')}
+        data-track="statistics_designated_credit_open"
+      >
+        指定售出
+      </AdminPillButton>
+      <AdminPillButton
+        active={reportKind === 'product'}
+        onClick={() => setReportKind('product')}
+        data-track="statistics_product_open"
+      >
+        商品
       </AdminPillButton>
     </AdminPillRow>
   )
-
-  if (reportKind === 'performance') {
-    return (
-      <div>
-        {reportKindToggle}
-        <PerformanceStatistics isMobile={isMobile} coachId={autoFilterCoachId} />
-      </div>
-    )
-  }
 
   return (
     <div>
@@ -355,6 +398,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
             showTodayButton={!isMobile}
             label="查詢期間"
             simplified={true}
+            trackPrefix={autoFilterCoachId ? 'coach_report_ledger_period' : 'admin_statistics_ledger_period'}
           />
         </div>
 
@@ -372,11 +416,12 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                 fontWeight: '500',
                 cursor: 'pointer',
               }}
+              data-track="admin_statistics_ledger_coach"
             >
               <option value="all">全部教練</option>
-              {allCoachStats.map(stat => (
-                <option key={stat.coachId} value={stat.coachId}>
-                  {stat.coachName}
+              {coachOptions.map((coach) => (
+                <option key={coach.id} value={coach.id}>
+                  {coach.name}
                 </option>
               ))}
             </select>
@@ -384,7 +429,28 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
         )}
       </div>
 
-      {loading ? (
+      <CoachLedgerOverview
+        isMobile={isMobile}
+        section={reportKind}
+        serviceRows={coachStats}
+        performanceRows={performanceRows}
+        onSelect={(section, coachId) => {
+          setReportKind(section)
+          if (coachId && !autoFilterCoachId) setSelectedCoachId(coachId)
+        }}
+      />
+
+      <div hidden={reportKind === 'service'}>
+        <PerformanceStatistics
+          isMobile={isMobile}
+          section={reportKind === 'service' ? 'designated_lesson' : reportKind}
+          selectedDate={selectedDate}
+          selectedCoachId={selectedCoachId}
+          onSectionDataChange={handlePerformanceDataChange}
+        />
+      </div>
+
+      {reportKind === 'service' && (loading ? (
         <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary, fontSize: getFontSize('body', isMobile) }}>
           載入中...
         </div>
@@ -709,7 +775,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
             ))}
           </div>
         </>
-      )}
+      ))}
     </div>
   )
 }

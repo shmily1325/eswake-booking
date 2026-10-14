@@ -73,15 +73,15 @@ describe('CoachDesignatedDeductionControl balance preview', () => {
     expect(screen.getByRole('button', { name: /指定課.*剩餘 70 分/ }))
       .toHaveAttribute('aria-expanded', 'true')
 
-    expect(await screen.findByText('扣除後總剩餘 70 分鐘')).toBeInTheDocument()
+    expect(await screen.findByText('扣除後剩餘 70 分')).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('本次扣除分鐘'), {
       target: { value: '50' },
     })
-    expect(screen.getByText('扣除後總剩餘 80 分鐘')).toBeInTheDocument()
+    expect(screen.getByText('扣除後剩餘 80 分')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('checkbox', { name: '本次扣除時數' }))
-    expect(screen.getByText('取消扣除後總剩餘 130 分鐘')).toBeInTheDocument()
+    expect(screen.getByText('取消後剩餘 130 分')).toBeInTheDocument()
   })
 
   it('restores both regular and gift deductions before previewing a split edit', async () => {
@@ -103,7 +103,7 @@ describe('CoachDesignatedDeductionControl balance preview', () => {
     await waitFor(() => expect(mockedFetchContext).toHaveBeenCalledOnce())
     expect(screen.getByRole('button', { name: /指定課.*剩餘 100 分/ }))
       .toHaveAttribute('aria-expanded', 'true')
-    expect(await screen.findByText(/扣除後總剩餘 100 分鐘/)).toBeInTheDocument()
+    expect(await screen.findByText('扣除後剩餘 100 分')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '分開扣' }))
       .toHaveAttribute('aria-pressed', 'true')
 
@@ -113,8 +113,8 @@ describe('CoachDesignatedDeductionControl balance preview', () => {
     fireEvent.change(screen.getByLabelText('贈送指定課扣除分鐘'), {
       target: { value: '5' },
     })
-    expect(screen.getByText(/扣除後總剩餘 110 分鐘/)).toBeInTheDocument()
-    expect(screen.getByText(/指定課 75・贈送 35/)).toBeInTheDocument()
+    expect(screen.getByText('扣除後剩餘 110 分')).toBeInTheDocument()
+    expect(screen.queryByText(/指定課 75・贈送 35/)).not.toBeInTheDocument()
   })
 
   it('keeps a manually collapsed card closed', async () => {
@@ -187,7 +187,7 @@ describe('CoachDesignatedDeductionControl balance preview', () => {
     await waitFor(() => expect(mockedFetchContext).toHaveBeenCalledTimes(2), {
       timeout: 2000,
     })
-    expect(await screen.findByText('扣除後總剩餘 70 分鐘')).toBeInTheDocument()
+    expect(await screen.findByText('扣除後剩餘 70 分')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '重新載入' })).not.toBeInTheDocument()
   })
 

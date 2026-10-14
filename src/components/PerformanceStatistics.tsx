@@ -1,27 +1,27 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchCoachDesignatedCreditReport } from '../pages/coach/designatedHours/api'
 import type { CoachDesignatedCreditReportEntry } from '../pages/coach/designatedHours/types'
 import {
   designSystem,
-  getCardStyle,
   getFontSize,
-  getInputStyle,
-  getLabelStyle,
 } from '../styles/designSystem'
-import { getLocalDateString } from '../utils/formatters'
 import { fetchAllInBatches, fetchAllPaginated } from '../utils/supabasePaginate'
-import { DateRangePicker } from './DateRangePicker'
+import type {
+  CoachLedgerMetricRow,
+  PerformanceLedgerSection,
+} from './coachLedgerTypes'
 import { ProductSalesStatistics } from './ProductSalesStatistics'
 
 interface Props {
   isMobile: boolean
-  coachId?: string
-}
-
-interface CoachOption {
-  id: string
-  name: string
+  section: PerformanceLedgerSection
+  selectedDate: string
+  selectedCoachId: string
+  onSectionDataChange?: (
+    section: PerformanceLedgerSection,
+    rows: CoachLedgerMetricRow[],
+  ) => void
 }
 
 export interface DesignatedLessonParticipant {
@@ -180,80 +180,52 @@ export function buildDesignatedCreditGroups(
     .sort((a, b) => b.totalMinutes - a.totalMinutes || a.coachName.localeCompare(b.coachName))
 }
 
-export function PerformanceStatistics({ isMobile, coachId }: Props) {
-  const [selectedDate, setSelectedDate] = useState(() =>
-    coachId ? getLocalDateString().slice(0, 7) : getLocalDateString(),
+export function PerformanceStatistics({
+  isMobile,
+  section,
+  selectedDate,
+  selectedCoachId,
+  onSectionDataChange,
+}: Props) {
+  const publishLessons = useCallback(
+    (rows: CoachLedgerMetricRow[]) => onSectionDataChange?.('designated_lesson', rows),
+    [onSectionDataChange],
   )
-  const [selectedCoachId, setSelectedCoachId] = useState(coachId ?? 'all')
-  const [coaches, setCoaches] = useState<CoachOption[]>([])
-
-  useEffect(() => {
-    if (coachId) setSelectedCoachId(coachId)
-  }, [coachId])
-
-  useEffect(() => {
-    if (coachId) return
-    let cancelled = false
-    void supabase
-      .from('coaches')
-      .select('id, name')
-      .eq('status', 'active')
-      .order('name')
-      .then(({ data }) => {
-        if (!cancelled) setCoaches((data ?? []) as CoachOption[])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [coachId])
+  const publishCredits = useCallback(
+    (rows: CoachLedgerMetricRow[]) => onSectionDataChange?.('designated_credit', rows),
+    [onSectionDataChange],
+  )
+  const publishProducts = useCallback(
+    (rows: CoachLedgerMetricRow[]) => onSectionDataChange?.('product', rows),
+    [onSectionDataChange],
+  )
 
   return (
     <div>
-      <div style={{ ...getCardStyle(isMobile), marginBottom: isMobile ? 16 : 24 }}>
-        <div style={{ marginBottom: coachId ? 0 : isMobile ? 16 : 20 }}>
-          <DateRangePicker
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
-            isMobile={isMobile}
-            showTodayButton={!isMobile}
-            label="查詢期間"
-            simplified
-            trackPrefix={coachId ? 'coach_report_performance_period' : 'admin_statistics_performance_period'}
-          />
-        </div>
-        {!coachId && (
-          <div>
-            <label style={getLabelStyle(isMobile)}>篩選教練</label>
-            <select
-              value={selectedCoachId}
-              onChange={(event) => setSelectedCoachId(event.target.value)}
-              data-track="admin_statistics_performance_coach"
-              style={{ ...getInputStyle(isMobile), fontWeight: 500, cursor: 'pointer' }}
-            >
-              <option value="all">全部教練</option>
-              {coaches.map((coach) => (
-                <option key={coach.id} value={coach.id}>{coach.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
+      <div hidden={section !== 'designated_lesson'}>
+        <DesignatedLessonStatistics
+          isMobile={isMobile}
+          selectedDate={selectedDate}
+          selectedCoachId={selectedCoachId}
+          onDataChange={publishLessons}
+        />
       </div>
-
-      <DesignatedLessonStatistics
-        isMobile={isMobile}
-        selectedDate={selectedDate}
-        selectedCoachId={selectedCoachId}
-      />
-      <DesignatedCreditStatistics
-        isMobile={isMobile}
-        selectedDate={selectedDate}
-        selectedCoachId={selectedCoachId}
-      />
-      <ProductSalesStatistics
-        isMobile={isMobile}
-        selectedDate={selectedDate}
-        selectedCoachId={selectedCoachId}
-      />
+      <div hidden={section !== 'designated_credit'}>
+        <DesignatedCreditStatistics
+          isMobile={isMobile}
+          selectedDate={selectedDate}
+          selectedCoachId={selectedCoachId}
+          onDataChange={publishCredits}
+        />
+      </div>
+      <div hidden={section !== 'product'}>
+        <ProductSalesStatistics
+          isMobile={isMobile}
+          selectedDate={selectedDate}
+          selectedCoachId={selectedCoachId}
+          onDataChange={publishProducts}
+        />
+      </div>
     </div>
   )
 }
@@ -262,10 +234,12 @@ function DesignatedLessonStatistics({
   isMobile,
   selectedDate,
   selectedCoachId,
+  onDataChange,
 }: {
   isMobile: boolean
   selectedDate: string
   selectedCoachId: string
+  onDataChange?: (rows: CoachLedgerMetricRow[]) => void
 }) {
   const [groups, setGroups] = useState<DesignatedLessonGroup[]>([])
   const [loading, setLoading] = useState(false)
@@ -335,6 +309,15 @@ function DesignatedLessonStatistics({
     { minutes: 0, count: 0 },
   ), [groups])
 
+  useEffect(() => {
+    onDataChange?.(groups.map((group) => ({
+      id: group.coachId,
+      name: group.coachName,
+      value: group.minutes,
+      count: group.details.length,
+    })))
+  }, [groups, onDataChange])
+
   return (
     <PerformanceSection
       title="指定課單堂"
@@ -386,10 +369,12 @@ function DesignatedCreditStatistics({
   isMobile,
   selectedDate,
   selectedCoachId,
+  onDataChange,
 }: {
   isMobile: boolean
   selectedDate: string
   selectedCoachId: string
+  onDataChange?: (rows: CoachLedgerMetricRow[]) => void
 }) {
   const [groups, setGroups] = useState<DesignatedCreditGroup[]>([])
   const [loading, setLoading] = useState(false)
@@ -432,6 +417,17 @@ function DesignatedCreditStatistics({
     }),
     { regular: 0, gift: 0, total: 0 },
   ), [groups])
+
+  useEffect(() => {
+    onDataChange?.(groups.map((group) => ({
+      id: group.coachId,
+      name: group.coachName,
+      value: group.totalMinutes,
+      count: group.details.length,
+      regularValue: group.regularMinutes,
+      giftValue: group.giftMinutes,
+    })))
+  }, [groups, onDataChange])
 
   return (
     <PerformanceSection

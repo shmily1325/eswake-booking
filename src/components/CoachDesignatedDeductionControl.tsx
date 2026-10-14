@@ -504,12 +504,7 @@ export function CoachDesignatedDeductionControl({
                     : designSystem.colors.text.secondary,
                 }}
               >
-                扣除後總剩餘 {after} 分鐘
-                {showGift && (
-                  <span>
-                    {' '}（指定課 {regularAfter}・贈送 {giftAfter}）
-                  </span>
-                )}
+                扣除後剩餘 {after} 分
               </div>
               {minutes > participant.duration_min && (
                 <div
@@ -532,12 +527,7 @@ export function CoachDesignatedDeductionControl({
                 color: designSystem.colors.text.secondary,
               }}
             >
-              取消扣除後總剩餘 {after} 分鐘
-              {showGift && (
-                <span>
-                  {' '}（指定課 {regularAfter}・贈送 {giftAfter}）
-                </span>
-              )}
+              取消後剩餘 {after} 分
             </div>
           )}
         </div>

@@ -225,31 +225,13 @@ export function CoachDesignatedHours({
   const isDefaultLedgerImageRange = ledgerImageStartDate === getLocalDateString()
     && ledgerImageEndDate === getLocalDateString()
   const originalEditDelta = editingEntry?.delta_minutes ?? 0
-  const originalRegularDelta = editingEntry
-    ? (editingEntry.entry_type === 'credit' ? 1 : -1)
-      * (editingEntry.regular_minutes ?? editingEntry.minutes)
-    : 0
-  const originalGiftDelta = editingEntry
-    ? (editingEntry.entry_type === 'credit' ? 1 : -1)
-      * (editingEntry.gift_minutes ?? 0)
-    : 0
   const nextEditDelta = editingEntry
     ? (editingEntry.entry_type === 'credit' ? parsedEditMinutes : -parsedEditMinutes)
-    : 0
-  const nextRegularDelta = editingEntry
-    ? (editingEntry.entry_type === 'credit' ? parsedEditRegular : -parsedEditRegular)
-    : 0
-  const nextGiftDelta = editingEntry
-    ? (editingEntry.entry_type === 'credit' ? parsedEditGift : -parsedEditGift)
     : 0
   const balanceAfterEdit = Number.isFinite(parsedEditMinutes)
     ? balance - originalEditDelta + nextEditDelta
     : balance
   const balanceAfterVoid = balance - originalEditDelta
-  const regularAfterEdit = regularBalance - originalRegularDelta + nextRegularDelta
-  const giftAfterEdit = giftBalance - originalGiftDelta + nextGiftDelta
-  const regularAfterVoid = regularBalance - originalRegularDelta
-  const giftAfterVoid = giftBalance - originalGiftDelta
 
   const loadStudents = useCallback(async () => {
     setLoading(true)
@@ -548,7 +530,10 @@ export function CoachDesignatedHours({
   }
 
   const voidEntry = async () => {
-    if (!editingEntry || !confirm('確定取消這筆指定課紀錄？')) return
+    if (
+      !editingEntry
+      || !confirm(`確定取消這筆指定課紀錄？\n取消後剩餘 ${balanceAfterVoid} 分`)
+    ) return
     setSaving(true)
     try {
       await voidCoachDesignatedEntry(editingEntry.id)
@@ -1621,25 +1606,16 @@ export function CoachDesignatedHours({
                             style={{
                               display: 'block',
                               marginTop: 6,
-                              color: designSystem.colors.text.secondary,
+                              color: reportTotal > report.duration_min
+                                ? designSystem.colors.warning[700]
+                                : designSystem.colors.text.secondary,
                               fontSize: getFontSize('bodySmall', isMobile),
                             }}
                           >
-                            本次共扣 {reportTotal} 分（預約 {report.duration_min}）
+                            本次扣除 {reportTotal} 分
+                            {reportTotal > report.duration_min
+                              && `・超過預約 ${report.duration_min} 分`}
                           </span>
-                          {reportTotal > report.duration_min && (
-                            <span
-                              style={{
-                                display: 'block',
-                                marginTop: 4,
-                                width: '100%',
-                                color: designSystem.colors.warning[700],
-                                fontSize: getFontSize('bodySmall', isMobile),
-                              }}
-                            >
-                              預約 {report.duration_min} 分，本次扣除 {reportTotal} 分
-                            </span>
-                          )}
                         </div>
                       )}
                     </div>
@@ -1784,11 +1760,8 @@ export function CoachDesignatedHours({
             >
               修改後剩餘：<strong style={{ color: designSystem.colors.text.primary }}>{balanceAfterEdit} 分</strong>
               <div style={{ marginTop: 4, fontSize: getFontSize('bodySmall', isMobile) }}>
-                指定課 {regularAfterEdit} 分・贈送 {giftAfterEdit} 分
-              </div>
-              <div style={{ marginTop: 4, fontSize: getFontSize('bodySmall', isMobile) }}>
-                若取消此筆，總剩餘為 {balanceAfterVoid} 分
-                （指定課 {regularAfterVoid}・贈送 {giftAfterVoid}）
+                本次{editingEntry.entry_type === 'credit' ? '增加' : '扣除'}：
+                指定課 {parsedEditRegular} 分・贈送 {parsedEditGift} 分
               </div>
               {editingEntry.entry_type === 'report_deduction'
                 && editingEntry.duration_min
