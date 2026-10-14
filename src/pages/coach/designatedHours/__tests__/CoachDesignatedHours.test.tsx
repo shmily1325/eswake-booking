@@ -136,6 +136,20 @@ describe('CoachDesignatedHours', () => {
     expect(screen.getByRole('heading', { name: '新增指定課' })).toBeInTheDocument()
   })
 
+  it('renders a known empty coach immediately without a loading-state flash', () => {
+    render(
+      <CoachDesignatedHours
+        coachId="coach-empty"
+        isMobile={false}
+        initialStudents={[]}
+      />,
+    )
+
+    expect(screen.getByRole('heading', { name: '尚無指定課' })).toBeInTheDocument()
+    expect(screen.queryByText('載入中...')).not.toBeInTheDocument()
+    expect(mockedFetchStudents).not.toHaveBeenCalled()
+  })
+
   it('defaults both ledger image dates to today', async () => {
     mockedFetchDetail.mockResolvedValueOnce({
       balance: 330,

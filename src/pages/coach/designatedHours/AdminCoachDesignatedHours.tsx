@@ -136,6 +136,7 @@ export function AdminCoachDesignatedHours({
             coachId={selectedCoach.coach_id}
             isMobile={isMobile}
             initialMemberId={selectedMemberId}
+            initialStudents={selectedCoach.students}
           />
         </div>
       ) : (

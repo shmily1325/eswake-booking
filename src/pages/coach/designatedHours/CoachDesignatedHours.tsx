@@ -37,6 +37,7 @@ interface CoachDesignatedHoursProps {
   coachId: string
   isMobile: boolean
   initialMemberId?: string | null
+  initialStudents?: CoachDesignatedStudent[]
 }
 
 type ListFilter = 'active' | 'used' | 'all'
@@ -163,11 +164,17 @@ export function CoachDesignatedHours({
   coachId,
   isMobile,
   initialMemberId = null,
+  initialStudents,
 }: CoachDesignatedHoursProps) {
   const toast = useToast()
   const memberSearch = useMemberSearch()
-  const [students, setStudents] = useState<CoachDesignatedStudent[]>([])
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(initialMemberId)
+  const [students, setStudents] = useState<CoachDesignatedStudent[]>(
+    () => initialStudents ?? [],
+  )
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(
+    () => initialMemberId
+      || (!isMobile ? initialStudents?.[0]?.member_id ?? null : null),
+  )
   const [entries, setEntries] = useState<CoachDesignatedEntry[]>([])
   const [balance, setBalance] = useState(0)
   const [regularBalance, setRegularBalance] = useState(0)
@@ -175,7 +182,7 @@ export function CoachDesignatedHours({
   const [hasGiftEntries, setHasGiftEntries] = useState(false)
   const [regularExpiresOn, setRegularExpiresOn] = useState<string | null>(null)
   const [giftExpiresOn, setGiftExpiresOn] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(initialStudents === undefined)
   const [detailLoading, setDetailLoading] = useState(false)
   const [filter, setFilter] = useState<ListFilter>('active')
   const [creditOpen, setCreditOpen] = useState(false)
@@ -273,8 +280,9 @@ export function CoachDesignatedHours({
   }, [coachId, toast])
 
   useEffect(() => {
+    if (initialStudents !== undefined) return
     void loadStudents()
-  }, [loadStudents])
+  }, [initialStudents, loadStudents])
 
   useEffect(() => {
     if (selectedMemberId) {
