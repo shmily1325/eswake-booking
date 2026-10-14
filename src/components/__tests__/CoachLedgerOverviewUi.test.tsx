@@ -4,12 +4,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { CoachLedgerOverview } from '../CoachLedgerOverview'
 
 describe('CoachLedgerOverview interactions', () => {
-  it('opens the selected coach and ledger section from the overview table', () => {
-    const onSelect = vi.fn()
+  it('filters to a coach from the overview card', () => {
+    const onSelectCoach = vi.fn()
     render(
       <CoachLedgerOverview
         isMobile={false}
-        section="service"
         serviceRows={[{
           coachId: 'coach-1',
           coachName: 'Pierre',
@@ -23,11 +22,31 @@ describe('CoachLedgerOverview interactions', () => {
           designated_credit: [],
           product: [{ id: 'coach-1', name: 'Pierre', value: 4800, count: 2 }],
         }}
-        onSelect={onSelect}
+        selectedCoachId="all"
+        onSelectCoach={onSelectCoach}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /\$4,800.*2 件/ }))
-    expect(onSelect).toHaveBeenCalledWith('product', 'coach-1')
+    fireEvent.click(screen.getByRole('button', { name: /Pierre.*\$4,800.*2 件/ }))
+    expect(onSelectCoach).toHaveBeenCalledWith('coach-1')
+  })
+
+  it('does not show unassigned product sales as a coach', () => {
+    render(
+      <CoachLedgerOverview
+        isMobile={false}
+        serviceRows={[]}
+        performanceRows={{
+          designated_lesson: [],
+          designated_credit: [],
+          product: [{ id: 'unassigned', name: '未指定', value: 2000, count: 3 }],
+        }}
+        selectedCoachId="all"
+        onSelectCoach={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: /未指定/ })).not.toBeInTheDocument()
+    expect(screen.getByText('此期間尚無教練數據')).toBeInTheDocument()
   })
 })

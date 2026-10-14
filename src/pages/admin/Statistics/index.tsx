@@ -18,7 +18,6 @@ import { fetchAllInBatches, fetchAllPaginated } from '../../../utils/supabasePag
 
 import { LoadingSkeleton, LastUpdated } from './components'
 import {
-  CoachLedgerTab,
   FutureTab,
   OperationsTab,
   ProductTab,
@@ -37,7 +36,7 @@ import type {
   WeekdayStats,
 } from './types'
 
-type TabType = 'operations' | 'coach-ledger' | 'future' | 'product'
+type TabType = 'operations' | 'future' | 'product'
 
 export function Statistics() {
   const user = useAuthUser()
@@ -56,7 +55,6 @@ export function Statistics() {
   const [activeTab, setActiveTab] = useState<TabType>('operations')
   const [operationsPeriod, setOperationsPeriod] = useState<OperationsPeriodMode>('monthly')
   const [productRefreshToken, setProductRefreshToken] = useState(0)
-  const [coachLedgerRefreshToken, setCoachLedgerRefreshToken] = useState(0)
 
   // 未來預約數據
   const [futureBookings, setFutureBookings] = useState<CoachFutureBooking[]>([])
@@ -81,7 +79,6 @@ export function Statistics() {
   // 主導覽區分場上營運、商品實收與未來排程。
   const tabs: { key: TabType; label: string; shortLabel?: string }[] = [
     { key: 'operations', label: '營運報表' },
-    { key: 'coach-ledger', label: '教練細帳' },
     { key: 'product', label: '商品營運' },
     { key: 'future', label: '未來排程' },
   ]
@@ -776,14 +773,6 @@ export function Statistics() {
       setProductRefreshToken((token) => token + 1)
       return
     }
-    if (activeTab === 'coach-ledger') {
-      setRefreshing(true)
-      setCoachLedgerRefreshToken((token) => token + 1)
-      setLastUpdated(new Date())
-      setRefreshing(false)
-      return
-    }
-
     setRefreshing(true)
     try {
       if (activeTab === 'operations' && operationsPeriod === 'annual') {
@@ -907,10 +896,6 @@ export function Statistics() {
                   setRefreshing(false)
                 }}
               />
-            )}
-
-            {activeTab === 'coach-ledger' && (
-              <CoachLedgerTab key={coachLedgerRefreshToken} />
             )}
 
           </div>

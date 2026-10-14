@@ -82,9 +82,11 @@ interface StatisticsTabProps {
   autoFilterCoachId?: string // 自动筛选特定教练（用于教练专用页面）
 }
 
+type StatisticsView = 'coach_overview' | CoachLedgerSection
+
 export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProps) {
   const toast = useToast()
-  const [reportKind, setReportKind] = useState<CoachLedgerSection>('service')
+  const [reportKind, setReportKind] = useState<StatisticsView>('service')
   // 如果是教練專用模式，預設顯示本月；否則顯示今天
   const [selectedDate, setSelectedDate] = useState(() => {
     if (autoFilterCoachId) {
@@ -350,7 +352,16 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   }, [allCoachStats, performanceRows])
 
   const reportKindToggle = (
-    <AdminPillRow style={{ marginBottom: isMobile ? 16 : 20 }}>
+    <AdminPillRow style={{ marginTop: isMobile ? 14 : 18 }}>
+      {!autoFilterCoachId && (
+        <AdminPillButton
+          active={reportKind === 'coach_overview'}
+          onClick={() => setReportKind('coach_overview')}
+          data-track="statistics_coach_overview_open"
+        >
+          教練數據
+        </AdminPillButton>
+      )}
       <AdminPillButton
         active={reportKind === 'service'}
         onClick={() => setReportKind('service')}
@@ -383,14 +394,17 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
   return (
     <div>
-      {reportKindToggle}
-      {/* 篩選區 */}
       <div style={{
         ...getCardStyle(isMobile),
         marginBottom: isMobile ? '16px' : '24px'
       }}>
-        {/* 查詢期間 - 簡化版 */}
-        <div style={{ marginBottom: isMobile ? '16px' : '20px' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile || autoFilterCoachId ? '1fr' : 'minmax(0, 1.35fr) minmax(220px, 0.65fr)',
+          alignItems: 'end',
+          gap: isMobile ? 14 : 18,
+        }}>
+        <div>
           <DateRangePicker
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
@@ -427,23 +441,28 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
             </select>
           </div>
         )}
+        </div>
+        {reportKindToggle}
       </div>
 
-      <CoachLedgerOverview
-        isMobile={isMobile}
-        section={reportKind}
-        serviceRows={coachStats}
-        performanceRows={performanceRows}
-        onSelect={(section, coachId) => {
-          setReportKind(section)
-          if (coachId && !autoFilterCoachId) setSelectedCoachId(coachId)
-        }}
-      />
+      {reportKind === 'coach_overview' && (
+        <CoachLedgerOverview
+          isMobile={isMobile}
+          serviceRows={coachStats}
+          performanceRows={performanceRows}
+          selectedCoachId={selectedCoachId}
+          onSelectCoach={(coachId) => {
+            if (!autoFilterCoachId) setSelectedCoachId(coachId)
+          }}
+        />
+      )}
 
-      <div hidden={reportKind === 'service'}>
+      <div hidden={reportKind === 'service' || reportKind === 'coach_overview'}>
         <PerformanceStatistics
           isMobile={isMobile}
-          section={reportKind === 'service' ? 'designated_lesson' : reportKind}
+          section={reportKind === 'designated_credit' || reportKind === 'product'
+            ? reportKind
+            : 'designated_lesson'}
           selectedDate={selectedDate}
           selectedCoachId={selectedCoachId}
           onSectionDataChange={handlePerformanceDataChange}

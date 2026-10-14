@@ -1,9 +1,6 @@
 import { useMemo } from 'react'
 import { designSystem, getFontSize } from '../styles/designSystem'
-import type {
-  CoachLedgerMetricRows,
-  CoachLedgerSection,
-} from './coachLedgerTypes'
+import type { CoachLedgerMetricRows } from './coachLedgerTypes'
 
 interface ServiceRow {
   coachId: string
@@ -16,10 +13,10 @@ interface ServiceRow {
 
 interface Props {
   isMobile: boolean
-  section: CoachLedgerSection
   serviceRows: ServiceRow[]
   performanceRows: CoachLedgerMetricRows
-  onSelect: (section: CoachLedgerSection, coachId?: string) => void
+  selectedCoachId: string
+  onSelectCoach: (coachId: string) => void
 }
 
 interface OverviewRow {
@@ -91,87 +88,53 @@ export function buildCoachLedgerOverview(
     row.productCount = source.count
   })
 
-  return [...rows.values()].sort((a, b) => a.name.localeCompare(b.name))
+  return [...rows.values()]
+    .filter((row) => row.id !== 'unassigned')
+    .sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export function CoachLedgerOverview({
   isMobile,
-  section,
   serviceRows,
   performanceRows,
-  onSelect,
+  selectedCoachId,
+  onSelectCoach,
 }: Props) {
   const rows = useMemo(
     () => buildCoachLedgerOverview(serviceRows, performanceRows),
     [performanceRows, serviceRows],
   )
-  const totals = rows.reduce((sum, row) => ({
-    teaching: sum.teaching + row.teaching,
-    driving: sum.driving + row.driving,
-    lesson: sum.lesson + row.lesson,
-    credit: sum.credit + row.credit,
-    product: sum.product + row.product,
-  }), { teaching: 0, driving: 0, lesson: 0, credit: 0, product: 0 })
-
-  const summaries: Array<{
-    label: string
-    value: string
-    target: CoachLedgerSection
-  }> = [
-    { label: '教學', value: `${totals.teaching} 分`, target: 'service' },
-    { label: '駕駛', value: `${totals.driving} 分`, target: 'service' },
-    { label: '指定單堂', value: `${totals.lesson} 分`, target: 'designated_lesson' },
-    { label: '指定售出', value: `${totals.credit} 分`, target: 'designated_credit' },
-    { label: '商品', value: `$${totals.product.toLocaleString()}`, target: 'product' },
-  ]
-
-  const metricButton = (
-    target: CoachLedgerSection,
-    coachId: string,
-    main: string,
-    detail: string,
-  ) => (
-    <button
-      type="button"
-      onClick={() => onSelect(target, coachId)}
-      style={{
-        width: '100%',
-        padding: 0,
-        border: 0,
-        background: 'transparent',
-        color: designSystem.colors.text.primary,
-        textAlign: 'left',
-        cursor: 'pointer',
-      }}
-    >
-      <strong style={{ display: 'block', fontVariantNumeric: 'tabular-nums' }}>{main}</strong>
-      <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>
-        {detail}
-      </span>
-    </button>
-  )
 
   return (
     <section style={{ marginBottom: designSystem.spacing.xl }}>
+      {rows.length === 0 ? (
+        <div style={{
+          padding: 32,
+          textAlign: 'center',
+          color: designSystem.colors.text.secondary,
+          fontSize: getFontSize('body', isMobile),
+        }}>
+          此期間尚無教練數據
+        </div>
+      ) : (
       <div style={{
         display: 'grid',
-        gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))',
-        gap: 8,
-        marginBottom: 16,
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))',
+        gap: isMobile ? 10 : 14,
       }}>
-        {summaries.map((item) => (
+        {rows.map((row) => (
           <button
-            key={item.label}
+            key={row.id}
             type="button"
-            onClick={() => onSelect(item.target)}
+            onClick={() => onSelectCoach(row.id)}
             style={{
-              minHeight: 68,
-              padding: '10px 12px',
-              border: `1px solid ${section === item.target
+              minHeight: 150,
+              padding: isMobile ? 14 : 16,
+              border: `1px solid ${selectedCoachId === row.id
                 ? designSystem.colors.border.dark
                 : designSystem.colors.border.light}`,
-              borderRadius: designSystem.borderRadius.md,
-              background: section === item.target
+              borderRadius: designSystem.borderRadius.lg,
+              background: selectedCoachId === row.id
                 ? designSystem.colors.secondary[50]
                 : designSystem.colors.background.card,
               color: designSystem.colors.text.primary,
@@ -179,53 +142,30 @@ export function CoachLedgerOverview({
               cursor: 'pointer',
             }}
           >
-            <span style={{ display: 'block', color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
-              {item.label}
-            </span>
-            <strong style={{ display: 'block', marginTop: 3, fontSize: getFontSize('bodyLarge', isMobile) }}>
-              {item.value}
+            <strong style={{
+              display: 'block',
+              marginBottom: 14,
+              fontSize: getFontSize('bodyLarge', isMobile),
+            }}>
+              {row.name}
             </strong>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div>
+                <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>教學／駕駛</span>
+                <strong style={{ display: 'block', marginTop: 2 }}>{row.teaching} 分／{row.driving} 分</strong>
+              </div>
+              <div>
+                <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>指定課</span>
+                <strong style={{ display: 'block', marginTop: 2 }}>單堂 {row.lesson}／售出 {row.credit} 分</strong>
+              </div>
+              <div>
+                <span style={{ color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>商品</span>
+                <strong style={{ display: 'block', marginTop: 2 }}>${row.product.toLocaleString()}・{row.productCount} 件</strong>
+              </div>
+            </div>
           </button>
         ))}
       </div>
-
-      {rows.length > 0 && (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{
-            width: '100%',
-            minWidth: isMobile ? 760 : undefined,
-            borderCollapse: 'collapse',
-            fontSize: getFontSize('bodySmall', isMobile),
-          }}>
-            <thead>
-              <tr style={{ background: designSystem.colors.background.hover }}>
-                {['教練', '教學', '駕駛', '指定單堂', '指定售出', '商品'].map((label) => (
-                  <th key={label} style={{
-                    padding: 10,
-                    textAlign: 'left',
-                    borderBottom: `1px solid ${designSystem.colors.border.light}`,
-                    color: designSystem.colors.text.secondary,
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} style={{ borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
-                  <th style={{ padding: 10, textAlign: 'left', whiteSpace: 'nowrap' }}>{row.name}</th>
-                  <td style={{ padding: 10 }}>{metricButton('service', row.id, `${row.teaching} 分`, `${row.teachingCount} 筆`)}</td>
-                  <td style={{ padding: 10 }}>{metricButton('service', row.id, `${row.driving} 分`, `${row.drivingCount} 筆`)}</td>
-                  <td style={{ padding: 10 }}>{metricButton('designated_lesson', row.id, `${row.lesson} 分`, `${row.lessonCount} 筆`)}</td>
-                  <td style={{ padding: 10 }}>{metricButton('designated_credit', row.id, `${row.credit} 分`, `購 ${row.regularCredit}・贈 ${row.giftCredit}`)}</td>
-                  <td style={{ padding: 10 }}>{metricButton('product', row.id, `$${row.product.toLocaleString()}`, `${row.productCount} 件`)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       )}
     </section>
   )

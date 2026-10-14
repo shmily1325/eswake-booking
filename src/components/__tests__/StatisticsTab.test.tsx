@@ -37,11 +37,14 @@ describe('StatisticsTab shared ledger', () => {
   it('keeps the four simple report sections', async () => {
     render(<StatisticsTab isMobile={false} />)
 
+    expect(screen.getByRole('button', { name: '教練數據' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '教學／駕駛' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '指定單堂' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '指定售出' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '商品' })).toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole('button', { name: '教練數據' }))
+    expect(screen.getByTestId('ledger-overview')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '商品' }))
     expect(screen.getByTestId('performance-section')).toHaveAttribute('data-section', 'product')
     await waitFor(() => expect(mockedFetchAllPaginated).toHaveBeenCalled())
@@ -51,7 +54,8 @@ describe('StatisticsTab shared ledger', () => {
     render(<StatisticsTab isMobile autoFilterCoachId="coach-1" />)
 
     expect(screen.queryByLabelText('篩選教練')).not.toBeInTheDocument()
-    expect(screen.getByTestId('ledger-overview')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '教練數據' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('ledger-overview')).not.toBeInTheDocument()
     await waitFor(() => expect(mockedFetchAllPaginated).toHaveBeenCalled())
   })
 })
