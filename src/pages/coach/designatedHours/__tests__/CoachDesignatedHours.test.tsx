@@ -211,7 +211,9 @@ describe('CoachDesignatedHours', () => {
     expect(screen.getByText(/2026年9月/)).toBeInTheDocument()
     expect(screen.getAllByText('剩餘')).toHaveLength(2)
     expect(screen.getByRole('button', { name: '扣除 30 分，餘額 300 分' })).toBeInTheDocument()
-    expect(screen.getByText('轉帳確認')).toBeInTheDocument()
+    const creditRow = screen.getByRole('button', { name: '增加 330 分，餘額 330 分' })
+    expect(creditRow).toHaveTextContent('轉帳確認')
+    expect(creditRow).not.toHaveTextContent('新增指定課')
   })
 
   it('can split one backfilled report between regular and gift minutes', async () => {

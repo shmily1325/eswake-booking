@@ -2040,10 +2040,9 @@ function EntryList({
           ? entry.occurred_at.slice(5, 10).replace('-', '/')
           : compactDate(entryDate)
         const title = entry.entry_type === 'credit'
-          ? '新增指定課'
+          ? (entry.note?.trim() || '新增指定課')
           : (entry.boat_name || '未指定船')
         const secondaryParts = [
-          entry.entry_type === 'credit' ? entry.note?.trim() : null,
           (entry.gift_minutes ?? 0) > 0 ? detailLabel : null,
           expiry,
         ].filter(Boolean)
