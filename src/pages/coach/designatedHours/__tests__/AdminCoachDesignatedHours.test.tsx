@@ -84,4 +84,13 @@ describe('AdminCoachDesignatedHours', () => {
       overflowX: 'visible',
     })
   })
+
+  it('searches students without matching coach names', async () => {
+    render(<AdminCoachDesignatedHours isMobile={false} />)
+
+    const search = await screen.findByRole('textbox', { name: '搜尋學生' })
+    fireEvent.change(search, { target: { value: 'Jerry' } })
+
+    expect(screen.getByText('找不到符合的指定課資料')).toBeInTheDocument()
+  })
 })

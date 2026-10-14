@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AdminPillButton, AdminPillRow } from '../../../components/AdminPageLayout'
 import { ClearableSearchInput } from '../../../components/ui/ClearableSearchInput'
 import { useToast } from '../../../components/ui'
-import { designSystem, getButtonStyle, getFontSize } from '../../../styles/designSystem'
+import { designSystem, getFontSize } from '../../../styles/designSystem'
 import { getLocalDateString } from '../../../utils/date'
 import { fetchAdminCoachDesignatedOverview } from './api'
 import { CoachDesignatedHours } from './CoachDesignatedHours'
@@ -15,15 +15,8 @@ interface AdminCoachDesignatedHoursProps {
   isMobile: boolean
 }
 
-type OverviewFilter = 'active' | 'used' | 'all'
-
 function studentName(student: CoachDesignatedStudent): string {
   return student.nickname || student.name
-}
-
-function hasBalance(student: CoachDesignatedStudent): boolean {
-  return (student.regular_balance ?? student.balance) !== 0
-    || (student.gift_balance ?? 0) !== 0
 }
 
 function expiryText(student: CoachDesignatedStudent): string | null {
@@ -52,7 +45,6 @@ export function AdminCoachDesignatedHours({
   const [loading, setLoading] = useState(true)
   const [selectedCoachId, setSelectedCoachId] = useState<string | null>(null)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
-  const [filter, setFilter] = useState<OverviewFilter>('active')
   const [query, setQuery] = useState('')
 
   const loadOverview = useCallback(async () => {
@@ -76,12 +68,8 @@ export function AdminCoachDesignatedHours({
     const keyword = query.trim().toLocaleLowerCase('zh-TW')
     return coaches
       .map((coach) => {
-        const coachMatches = coach.coach_name.toLocaleLowerCase('zh-TW').includes(keyword)
         const students = coach.students.filter((student) => {
-          const active = hasBalance(student)
-          if (filter === 'active' && !active) return false
-          if (filter === 'used' && active) return false
-          if (!keyword || coachMatches) return true
+          if (!keyword) return true
           return `${student.name} ${student.nickname || ''}`
             .toLocaleLowerCase('zh-TW')
             .includes(keyword)
@@ -89,7 +77,7 @@ export function AdminCoachDesignatedHours({
         return { ...coach, students }
       })
       .filter((coach) => coach.students.length > 0)
-  }, [coaches, filter, query])
+  }, [coaches, query])
 
   const openCoach = (coachId: string, memberId: string | null = null) => {
     setSelectedMemberId(memberId)
@@ -156,32 +144,11 @@ export function AdminCoachDesignatedHours({
             value={query}
             onValueChange={setQuery}
             isMobile={isMobile}
-            placeholder="搜尋教練或學生"
-            aria-label="搜尋教練或學生"
+            placeholder="搜尋學生"
+            aria-label="搜尋學生"
             dataTrack="admin_designated_search"
-            containerStyle={{ maxWidth: 480, marginBottom: 12 }}
+            containerStyle={{ maxWidth: 480, marginBottom: 16 }}
           />
-
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-            {([
-              ['active', '有餘額'],
-              ['used', '已用完'],
-              ['all', '全部'],
-            ] as const).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setFilter(value)}
-                style={{
-                  ...getButtonStyle(filter === value ? 'primary' : 'secondary', 'small', isMobile),
-                  padding: isMobile ? '8px 13px' : '7px 13px',
-                  minHeight: isMobile ? 40 : 36,
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
 
           {visibleGroups.length === 0 ? (
             <div
@@ -197,7 +164,16 @@ export function AdminCoachDesignatedHours({
               {query ? '找不到符合的指定課資料' : '目前沒有符合的指定課資料'}
             </div>
           ) : (
-            <div style={{ display: 'grid', gap: isMobile ? 12 : 16 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile
+                  ? 'minmax(0, 1fr)'
+                  : 'repeat(2, minmax(0, 1fr))',
+                gap: isMobile ? 12 : 16,
+                alignItems: 'start',
+              }}
+            >
               {visibleGroups.map((coach) => {
                 const total = coach.students.reduce((sum, student) => sum + student.balance, 0)
                 return (
