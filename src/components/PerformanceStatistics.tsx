@@ -4,11 +4,13 @@ import { fetchCoachDesignatedCreditReport } from '../pages/coach/designatedHours
 import type { CoachDesignatedCreditReportEntry } from '../pages/coach/designatedHours/types'
 import {
   designSystem,
+  getButtonStyle,
   getFontSize,
 } from '../styles/designSystem'
 import { fetchAllInBatches, fetchAllPaginated } from '../utils/supabasePaginate'
 import type {
   CoachLedgerMetricRow,
+  LedgerLoadStatus,
   PerformanceLedgerSection,
 } from './coachLedgerTypes'
 import { ProductSalesStatistics } from './ProductSalesStatistics'
@@ -21,6 +23,11 @@ interface Props {
   onSectionDataChange?: (
     section: PerformanceLedgerSection,
     rows: CoachLedgerMetricRow[],
+  ) => void
+  onSectionStatusChange?: (
+    section: PerformanceLedgerSection,
+    status: LedgerLoadStatus,
+    error?: string,
   ) => void
 }
 
@@ -186,6 +193,7 @@ export function PerformanceStatistics({
   selectedDate,
   selectedCoachId,
   onSectionDataChange,
+  onSectionStatusChange,
 }: Props) {
   const publishLessons = useCallback(
     (rows: CoachLedgerMetricRow[]) => onSectionDataChange?.('designated_lesson', rows),
@@ -199,34 +207,52 @@ export function PerformanceStatistics({
     (rows: CoachLedgerMetricRow[]) => onSectionDataChange?.('product', rows),
     [onSectionDataChange],
   )
+  const publishLessonStatus = useCallback(
+    (status: LedgerLoadStatus, error?: string) =>
+      onSectionStatusChange?.('designated_lesson', status, error),
+    [onSectionStatusChange],
+  )
+  const publishCreditStatus = useCallback(
+    (status: LedgerLoadStatus, error?: string) =>
+      onSectionStatusChange?.('designated_credit', status, error),
+    [onSectionStatusChange],
+  )
+  const publishProductStatus = useCallback(
+    (status: LedgerLoadStatus, error?: string) =>
+      onSectionStatusChange?.('product', status, error),
+    [onSectionStatusChange],
+  )
 
+  if (section === 'designated_lesson') {
+    return (
+      <DesignatedLessonStatistics
+        isMobile={isMobile}
+        selectedDate={selectedDate}
+        selectedCoachId={selectedCoachId}
+        onDataChange={publishLessons}
+        onStatusChange={publishLessonStatus}
+      />
+    )
+  }
+  if (section === 'designated_credit') {
+    return (
+      <DesignatedCreditStatistics
+        isMobile={isMobile}
+        selectedDate={selectedDate}
+        selectedCoachId={selectedCoachId}
+        onDataChange={publishCredits}
+        onStatusChange={publishCreditStatus}
+      />
+    )
+  }
   return (
-    <div>
-      <div hidden={section !== 'designated_lesson'}>
-        <DesignatedLessonStatistics
-          isMobile={isMobile}
-          selectedDate={selectedDate}
-          selectedCoachId={selectedCoachId}
-          onDataChange={publishLessons}
-        />
-      </div>
-      <div hidden={section !== 'designated_credit'}>
-        <DesignatedCreditStatistics
-          isMobile={isMobile}
-          selectedDate={selectedDate}
-          selectedCoachId={selectedCoachId}
-          onDataChange={publishCredits}
-        />
-      </div>
-      <div hidden={section !== 'product'}>
-        <ProductSalesStatistics
-          isMobile={isMobile}
-          selectedDate={selectedDate}
-          selectedCoachId={selectedCoachId}
-          onDataChange={publishProducts}
-        />
-      </div>
-    </div>
+    <ProductSalesStatistics
+      isMobile={isMobile}
+      selectedDate={selectedDate}
+      selectedCoachId={selectedCoachId}
+      onDataChange={publishProducts}
+      onStatusChange={publishProductStatus}
+    />
   )
 }
 
@@ -235,15 +261,18 @@ function DesignatedLessonStatistics({
   selectedDate,
   selectedCoachId,
   onDataChange,
+  onStatusChange,
 }: {
   isMobile: boolean
   selectedDate: string
   selectedCoachId: string
   onDataChange?: (rows: CoachLedgerMetricRow[]) => void
+  onStatusChange?: (status: LedgerLoadStatus, error?: string) => void
 }) {
   const [groups, setGroups] = useState<DesignatedLessonGroup[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -251,6 +280,7 @@ function DesignatedLessonStatistics({
       setLoading(true)
       setError(null)
       setGroups([])
+      onStatusChange?.('loading')
       try {
         const range = dateRange(selectedDate)
         const participants = await fetchAllPaginated<DesignatedLessonParticipant>(async (from, to) => {
@@ -285,11 +315,16 @@ function DesignatedLessonStatistics({
           (query) => query.eq('transaction_type', 'consume'),
           '指定課扣款',
         )
-        if (!cancelled) setGroups(buildDesignatedLessonGroups(participants, transactions))
+        if (!cancelled) {
+          setGroups(buildDesignatedLessonGroups(participants, transactions))
+          onStatusChange?.('success')
+        }
       } catch (cause) {
         if (!cancelled) {
+          const message = cause instanceof Error ? cause.message : '載入指定課單堂失敗'
           setGroups([])
-          setError(cause instanceof Error ? cause.message : '載入指定課單堂失敗')
+          setError(message)
+          onStatusChange?.('error', message)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -299,7 +334,7 @@ function DesignatedLessonStatistics({
     return () => {
       cancelled = true
     }
-  }, [selectedCoachId, selectedDate])
+  }, [onStatusChange, reloadToken, selectedCoachId, selectedDate])
 
   const totals = useMemo(() => groups.reduce(
     (sum, group) => ({
@@ -328,6 +363,7 @@ function DesignatedLessonStatistics({
       empty={groups.length === 0}
       emptyText={selectedDate.length === 10 ? '當日無指定課單堂' : '當月無指定課單堂'}
       summary={`${totals.minutes} 分 · ${totals.count} 筆`}
+      onRetry={() => setReloadToken((value) => value + 1)}
     >
       {selectedCoachId === 'all' && groups.length > 1 && (
         <MinutesComparison
@@ -370,15 +406,18 @@ function DesignatedCreditStatistics({
   selectedDate,
   selectedCoachId,
   onDataChange,
+  onStatusChange,
 }: {
   isMobile: boolean
   selectedDate: string
   selectedCoachId: string
   onDataChange?: (rows: CoachLedgerMetricRow[]) => void
+  onStatusChange?: (status: LedgerLoadStatus, error?: string) => void
 }) {
   const [groups, setGroups] = useState<DesignatedCreditGroup[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -386,6 +425,7 @@ function DesignatedCreditStatistics({
       setLoading(true)
       setError(null)
       setGroups([])
+      onStatusChange?.('loading')
       try {
         const range = dateRange(selectedDate)
         const entries = await fetchCoachDesignatedCreditReport({
@@ -393,11 +433,16 @@ function DesignatedCreditStatistics({
           endAt: `${range.end}T23:59:59+08:00`,
           coachId: selectedCoachId === 'all' ? undefined : selectedCoachId,
         })
-        if (!cancelled) setGroups(buildDesignatedCreditGroups(entries))
+        if (!cancelled) {
+          setGroups(buildDesignatedCreditGroups(entries))
+          onStatusChange?.('success')
+        }
       } catch (cause) {
         if (!cancelled) {
+          const message = cause instanceof Error ? cause.message : '載入指定課賣課失敗'
           setGroups([])
-          setError(cause instanceof Error ? cause.message : '載入指定課賣課失敗')
+          setError(message)
+          onStatusChange?.('error', message)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -407,7 +452,7 @@ function DesignatedCreditStatistics({
     return () => {
       cancelled = true
     }
-  }, [selectedCoachId, selectedDate])
+  }, [onStatusChange, reloadToken, selectedCoachId, selectedDate])
 
   const totals = useMemo(() => groups.reduce(
     (sum, group) => ({
@@ -439,6 +484,7 @@ function DesignatedCreditStatistics({
       empty={groups.length === 0}
       emptyText={selectedDate.length === 10 ? '當日無指定課售出時數' : '當月無指定課售出時數'}
       summary={`總計 ${totals.total} 分 · 購買 ${totals.regular} 分 · 贈送 ${totals.gift} 分`}
+      onRetry={() => setReloadToken((value) => value + 1)}
     >
       {selectedCoachId === 'all' && groups.length > 1 && (
         <MinutesComparison
@@ -484,6 +530,7 @@ function PerformanceSection({
   empty,
   emptyText,
   summary,
+  onRetry,
   children,
 }: {
   title: string
@@ -494,6 +541,7 @@ function PerformanceSection({
   empty: boolean
   emptyText: string
   summary: string
+  onRetry: () => void
   children: ReactNode
 }) {
   return (
@@ -516,7 +564,18 @@ function PerformanceSection({
       {loading ? (
         <StatusText isMobile={isMobile}>載入中...</StatusText>
       ) : error ? (
-        <StatusText isMobile={isMobile} danger>{error}</StatusText>
+        <div style={{ textAlign: 'center', padding: isMobile ? 24 : 32 }}>
+          <div style={{
+            marginBottom: 12,
+            color: designSystem.colors.danger[700],
+            fontSize: getFontSize('body', isMobile),
+          }}>
+            {error}
+          </div>
+          <button type="button" onClick={onRetry} style={getButtonStyle('outline', 'small', isMobile)}>
+            重新載入
+          </button>
+        </div>
       ) : empty ? (
         <StatusText isMobile={isMobile}>{emptyText}</StatusText>
       ) : (

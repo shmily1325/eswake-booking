@@ -6,19 +6,27 @@
  *    coach detail list uses type weight over colored pills.
  * 3. Primary task: review teaching/driving hours for a period — props/API unchanged.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllPaginated } from '../utils/supabasePaginate'
 import { extractDate, extractTime, getLocalDateString } from '../utils/formatters'
 import { useToast } from './ui'
 import { DateRangePicker } from './DateRangePicker'
-import { designSystem, getCardStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
+import {
+  designSystem,
+  getButtonStyle,
+  getCardStyle,
+  getFontSize,
+  getInputStyle,
+  getLabelStyle,
+} from '../styles/designSystem'
 import { AdminPillButton, AdminPillRow } from './AdminPageLayout'
 import { PerformanceStatistics } from './PerformanceStatistics'
 import { CoachLedgerOverview } from './CoachLedgerOverview'
 import type {
   CoachLedgerMetricRows,
   CoachLedgerSection,
+  LedgerLoadStatus,
   PerformanceLedgerSection,
 } from './coachLedgerTypes'
 
@@ -83,6 +91,11 @@ interface StatisticsTabProps {
 }
 
 type StatisticsView = 'coach_overview' | CoachLedgerSection
+const PERFORMANCE_SECTIONS: PerformanceLedgerSection[] = [
+  'designated_lesson',
+  'designated_credit',
+  'product',
+]
 
 export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProps) {
   const toast = useToast()
@@ -97,6 +110,9 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   })
   const [selectedCoachId, setSelectedCoachId] = useState<string>(autoFilterCoachId || 'all')
   const [loading, setLoading] = useState(false)
+  const [serviceStatus, setServiceStatus] = useState<LedgerLoadStatus>('idle')
+  const [serviceError, setServiceError] = useState<string | null>(null)
+  const [serviceReloadToken, setServiceReloadToken] = useState(0)
   const [allCoachStats, setAllCoachStats] = useState<CoachStats[]>([]) // 完整列表
   const [coachStats, setCoachStats] = useState<CoachStats[]>([]) // 顯示用的過濾列表
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null)
@@ -105,6 +121,13 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
     designated_credit: [],
     product: [],
   })
+  const [performanceStatus, setPerformanceStatus] = useState<Record<PerformanceLedgerSection, LedgerLoadStatus>>({
+    designated_lesson: 'idle',
+    designated_credit: 'idle',
+    product: 'idle',
+  })
+  const [performanceErrors, setPerformanceErrors] = useState<Partial<Record<PerformanceLedgerSection, string>>>({})
+  const serviceRequestRef = useRef(0)
 
   const handlePerformanceDataChange = useCallback((
     section: PerformanceLedgerSection,
@@ -126,6 +149,23 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
     })
   }, [])
 
+  const handlePerformanceStatusChange = useCallback((
+    section: PerformanceLedgerSection,
+    status: LedgerLoadStatus,
+    error?: string,
+  ) => {
+    setPerformanceStatus((current) => (
+      current[section] === status ? current : { ...current, [section]: status }
+    ))
+    setPerformanceErrors((current) => {
+      if (error) return { ...current, [section]: error }
+      if (!(section in current)) return current
+      const next = { ...current }
+      delete next[section]
+      return next
+    })
+  }, [])
+
   // 當 autoFilterCoachId 改變時，更新 selectedCoachId
   useEffect(() => {
     if (autoFilterCoachId) {
@@ -134,18 +174,43 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   }, [autoFilterCoachId])
 
   useEffect(() => {
+    setServiceStatus('idle')
+    setServiceError(null)
+    setPerformanceRows({
+      designated_lesson: [],
+      designated_credit: [],
+      product: [],
+    })
+    setPerformanceStatus({
+      designated_lesson: 'idle',
+      designated_credit: 'idle',
+      product: 'idle',
+    })
+    setPerformanceErrors({})
+  }, [selectedCoachId, selectedDate])
+
+  useEffect(() => {
+    if (reportKind !== 'service' && reportKind !== 'coach_overview') {
+      serviceRequestRef.current += 1
+      setLoading(false)
+      setServiceStatus((current) => current === 'loading' ? 'idle' : current)
+      return
+    }
     // 換條件時先清空，避免新資料載入前畫面殘留前條件的統計數字
     setAllCoachStats([])
     setCoachStats([])
     loadPastData()
     // loadPastData reads exactly the filter state listed here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFilterCoachId, selectedDate, selectedCoachId])
+  }, [autoFilterCoachId, reportKind, selectedDate, selectedCoachId, serviceReloadToken])
 
   const loadPastData = async () => {
     if (!selectedDate) return
-    
+
+    const requestId = ++serviceRequestRef.current
     setLoading(true)
+    setServiceStatus('loading')
+    setServiceError(null)
     try {
       let startDate: string
       let endDateStr: string
@@ -311,6 +376,8 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
 
       statsArray.sort((a, b) => b.totalMinutes - a.totalMinutes)
 
+      if (requestId !== serviceRequestRef.current) return
+
       // 保存完整列表供下拉選單使用
       setAllCoachStats(statsArray)
       
@@ -320,12 +387,16 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
         : statsArray.filter(s => s.coachId === selectedCoachId)
 
       setCoachStats(filteredStats)
+      setServiceStatus('success')
 
     } catch (error) {
+      if (requestId !== serviceRequestRef.current) return
       console.error('載入數據失敗:', error)
+      setServiceError(error instanceof Error ? error.message : '載入數據失敗')
+      setServiceStatus('error')
       toast.error('載入數據失敗')
     } finally {
-      setLoading(false)
+      if (requestId === serviceRequestRef.current) setLoading(false)
     }
   }
 
@@ -350,6 +421,33 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       .filter((coach) => coach.id !== 'unassigned')
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [allCoachStats, performanceRows])
+  const overviewPendingSection = reportKind === 'coach_overview' && serviceStatus === 'success'
+    ? PERFORMANCE_SECTIONS.find((section) => performanceStatus[section] === 'loading')
+      ?? PERFORMANCE_SECTIONS.find((section) => performanceStatus[section] === 'idle')
+    : undefined
+  const activePerformanceSection: PerformanceLedgerSection | null =
+    reportKind === 'designated_lesson'
+      || reportKind === 'designated_credit'
+      || reportKind === 'product'
+      ? reportKind
+      : overviewPendingSection ?? null
+  const overviewErrors = [
+    ...(serviceError ? [serviceError] : []),
+    ...PERFORMANCE_SECTIONS
+      .map((section) => performanceErrors[section])
+      .filter((message): message is string => Boolean(message)),
+  ]
+  const overviewReady = serviceStatus === 'success'
+    && PERFORMANCE_SECTIONS.every((section) => performanceStatus[section] === 'success')
+  const retryOverview = () => {
+    if (serviceStatus === 'error') setServiceReloadToken((value) => value + 1)
+    setPerformanceStatus((current) => ({
+      designated_lesson: current.designated_lesson === 'error' ? 'idle' : current.designated_lesson,
+      designated_credit: current.designated_credit === 'error' ? 'idle' : current.designated_credit,
+      product: current.product === 'error' ? 'idle' : current.product,
+    }))
+    setPerformanceErrors({})
+  }
 
   const reportKindToggle = (
     <AdminPillRow style={{ marginTop: isMobile ? 14 : 18 }}>
@@ -447,28 +545,74 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
       </div>
 
       {reportKind === 'coach_overview' && (
-        <CoachLedgerOverview
-          isMobile={isMobile}
-          serviceRows={coachStats}
-          performanceRows={performanceRows}
-        />
+        overviewReady ? (
+          <CoachLedgerOverview
+            isMobile={isMobile}
+            serviceRows={coachStats}
+            performanceRows={performanceRows}
+          />
+        ) : overviewErrors.length > 0 && !overviewPendingSection ? (
+          <div style={{ padding: 32, textAlign: 'center' }}>
+            <div style={{
+              marginBottom: 12,
+              color: designSystem.colors.danger[700],
+              fontSize: getFontSize('body', isMobile),
+            }}>
+              總表載入失敗：{overviewErrors[0]}
+            </div>
+            <button
+              type="button"
+              onClick={retryOverview}
+              style={getButtonStyle('outline', 'small', isMobile)}
+            >
+              重新載入
+            </button>
+          </div>
+        ) : (
+          <div style={{
+            padding: 40,
+            textAlign: 'center',
+            color: designSystem.colors.text.secondary,
+            fontSize: getFontSize('body', isMobile),
+          }}>
+            正在載入完整總表...
+          </div>
+        )
       )}
 
-      <div hidden={reportKind === 'service' || reportKind === 'coach_overview'}>
-        <PerformanceStatistics
-          isMobile={isMobile}
-          section={reportKind === 'designated_credit' || reportKind === 'product'
-            ? reportKind
-            : 'designated_lesson'}
-          selectedDate={selectedDate}
-          selectedCoachId={selectedCoachId}
-          onSectionDataChange={handlePerformanceDataChange}
-        />
-      </div>
+      {activePerformanceSection && (
+        <div hidden={reportKind === 'coach_overview'}>
+          <PerformanceStatistics
+            isMobile={isMobile}
+            section={activePerformanceSection}
+            selectedDate={selectedDate}
+            selectedCoachId={selectedCoachId}
+            onSectionDataChange={handlePerformanceDataChange}
+            onSectionStatusChange={handlePerformanceStatusChange}
+          />
+        </div>
+      )}
 
       {reportKind === 'service' && (loading ? (
         <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary, fontSize: getFontSize('body', isMobile) }}>
           載入中...
+        </div>
+      ) : serviceError ? (
+        <div style={{ padding: 32, textAlign: 'center' }}>
+          <div style={{
+            marginBottom: 12,
+            color: designSystem.colors.danger[700],
+            fontSize: getFontSize('body', isMobile),
+          }}>
+            {serviceError}
+          </div>
+          <button
+            type="button"
+            onClick={() => setServiceReloadToken((value) => value + 1)}
+            style={getButtonStyle('outline', 'small', isMobile)}
+          >
+            重新載入
+          </button>
         </div>
       ) : coachStats.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px', color: designSystem.colors.text.secondary, fontSize: getFontSize('body', isMobile) }}>

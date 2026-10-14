@@ -5,6 +5,7 @@ export type CoachLedgerSection =
   | 'product'
 
 export type PerformanceLedgerSection = Exclude<CoachLedgerSection, 'service'>
+export type LedgerLoadStatus = 'idle' | 'loading' | 'success' | 'error'
 
 export interface CoachLedgerMetricRow {
   id: string

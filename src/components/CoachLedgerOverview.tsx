@@ -246,24 +246,21 @@ export function CoachLedgerOverview({
             fontSize: getFontSize('bodySmall', false),
           }}>
             <thead>
-              <tr style={{ background: designSystem.colors.background.hover }}>
-                <th rowSpan={2} style={{ padding: '12px 16px', textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
-                  <SortButton sortKey="name">教練</SortButton>
-                </th>
-                <th colSpan={2} style={{ padding: '10px 12px 6px', textAlign: 'center', color: designSystem.colors.text.secondary }}>教學／駕駛</th>
-                <th colSpan={2} style={{ padding: '10px 12px 6px', textAlign: 'center', color: designSystem.colors.text.secondary }}>指定課</th>
-                <th rowSpan={2} style={{ padding: '12px 16px', textAlign: 'right', borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
-                  <SortButton sortKey="product">商品</SortButton>
-                </th>
-              </tr>
-              <tr style={{ background: designSystem.colors.background.hover }}>
+              <tr>
                 {([
+                  ['name', '教練'],
                   ['teaching', '教學'],
                   ['driving', '駕駛'],
-                  ['lesson', '單堂'],
-                  ['credit', '售出'],
+                  ['lesson', '指定單堂'],
+                  ['credit', '指定售出'],
+                  ['product', '商品'],
                 ] as Array<[SortKey, string]>).map(([key, label]) => (
-                  <th key={key} style={{ padding: '6px 12px 10px', textAlign: 'right', borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
+                  <th key={key} style={{
+                    padding: key === 'name' ? '12px 16px' : '12px',
+                    textAlign: key === 'name' ? 'left' : 'right',
+                    borderBottom: `1px solid ${designSystem.colors.border.main}`,
+                    whiteSpace: 'nowrap',
+                  }}>
                     <SortButton sortKey={key}>{label}</SortButton>
                   </th>
                 ))}

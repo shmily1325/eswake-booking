@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllInBatches, fetchAllPaginated } from '../utils/supabasePaginate'
-import { designSystem, getFontSize } from '../styles/designSystem'
-import type { CoachLedgerMetricRow } from './coachLedgerTypes'
+import { designSystem, getButtonStyle, getFontSize } from '../styles/designSystem'
+import type { CoachLedgerMetricRow, LedgerLoadStatus } from './coachLedgerTypes'
 
 interface Props {
   isMobile: boolean
   selectedDate: string
   selectedCoachId: string
   onDataChange?: (rows: CoachLedgerMetricRow[]) => void
+  onStatusChange?: (status: LedgerLoadStatus, error?: string) => void
 }
 
 interface SnapshotLine {
@@ -127,11 +128,13 @@ export function ProductSalesStatistics({
   selectedDate,
   selectedCoachId,
   onDataChange,
+  onStatusChange,
 }: Props) {
   const [groups, setGroups] = useState<SalespersonGroup[]>([])
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -140,6 +143,7 @@ export function ProductSalesStatistics({
       setError(null)
       setGroups([])
       setExpandedGroupIds(new Set())
+      onStatusChange?.('loading')
       try {
         const range = dateRange(selectedDate)
         const settlementData = await fetchAllPaginated<SettlementRow>(async (from, to) => {
@@ -205,11 +209,14 @@ export function ProductSalesStatistics({
         if (!cancelled) {
           setGroups(buildSalespersonGroups(settlements, meta, coachFilter))
           setExpandedGroupIds(new Set())
+          onStatusChange?.('success')
         }
       } catch (cause) {
         if (!cancelled) {
+          const message = cause instanceof Error ? cause.message : '載入商品銷售失敗'
           setGroups([])
-          setError(cause instanceof Error ? cause.message : '載入商品銷售失敗')
+          setError(message)
+          onStatusChange?.('error', message)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -219,7 +226,7 @@ export function ProductSalesStatistics({
     return () => {
       cancelled = true
     }
-  }, [selectedCoachId, selectedDate])
+  }, [onStatusChange, reloadToken, selectedCoachId, selectedDate])
 
   const visibleGroups = groups
   const summary = useMemo(
@@ -274,7 +281,16 @@ export function ProductSalesStatistics({
           載入中...
         </div>
       ) : error ? (
-        <div style={{ padding: 20, color: designSystem.colors.danger[700] }}>{error}</div>
+        <div style={{ padding: 24, textAlign: 'center' }}>
+          <div style={{ marginBottom: 12, color: designSystem.colors.danger[700] }}>{error}</div>
+          <button
+            type="button"
+            onClick={() => setReloadToken((value) => value + 1)}
+            style={getButtonStyle('outline', 'small', isMobile)}
+          >
+            重新載入
+          </button>
+        </div>
       ) : visibleGroups.length === 0 ? (
         <div style={{ padding: 32, textAlign: 'center', color: designSystem.colors.text.secondary }}>
           {selectedDate.length === 10 ? '當日無商品銷售' : '當月無商品銷售'}

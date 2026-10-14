@@ -1,8 +1,11 @@
+import { useEffect } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { StatisticsTab } from '../StatisticsTab'
 import { fetchAllPaginated } from '../../utils/supabasePaginate'
+
+const performanceMock = vi.hoisted(() => ({ failingSection: null as string | null }))
 
 vi.mock('../../utils/supabasePaginate', () => ({
   fetchAllPaginated: vi.fn(),
@@ -13,7 +16,9 @@ vi.mock('../ui', () => ({
 }))
 
 vi.mock('../DateRangePicker', () => ({
-  DateRangePicker: () => <div data-testid="date-filter" />,
+  DateRangePicker: ({ onDateChange }: { onDateChange: (value: string) => void }) => (
+    <button type="button" onClick={() => onDateChange('2026-09')}>換日期</button>
+  ),
 }))
 
 vi.mock('../CoachLedgerOverview', () => ({
@@ -21,9 +26,22 @@ vi.mock('../CoachLedgerOverview', () => ({
 }))
 
 vi.mock('../PerformanceStatistics', () => ({
-  PerformanceStatistics: ({ section }: { section: string }) => (
-    <div data-testid="performance-section" data-section={section} />
-  ),
+  PerformanceStatistics: ({
+    section,
+    onSectionStatusChange,
+  }: {
+    section: 'designated_lesson' | 'designated_credit' | 'product'
+    onSectionStatusChange?: (section: string, status: string, error?: string) => void
+  }) => {
+    useEffect(() => {
+      if (performanceMock.failingSection === section) {
+        onSectionStatusChange?.(section, 'error', 'temporary failure')
+      } else {
+        onSectionStatusChange?.(section, 'success')
+      }
+    }, [onSectionStatusChange, section])
+    return <div data-testid="performance-section" data-section={section} />
+  },
 }))
 
 const mockedFetchAllPaginated = vi.mocked(fetchAllPaginated)
@@ -32,6 +50,7 @@ describe('StatisticsTab shared ledger', () => {
   beforeEach(() => {
     mockedFetchAllPaginated.mockReset()
     mockedFetchAllPaginated.mockResolvedValue([])
+    performanceMock.failingSection = null
   })
 
   it('keeps the four simple report sections', async () => {
@@ -47,7 +66,7 @@ describe('StatisticsTab shared ledger', () => {
     expect(screen.getByRole('button', { name: '商品' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '教練總表' }))
-    expect(screen.getByTestId('ledger-overview')).toBeInTheDocument()
+    expect(await screen.findByTestId('ledger-overview')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: '商品' }))
     expect(screen.getByTestId('performance-section')).toHaveAttribute('data-section', 'product')
     await waitFor(() => expect(mockedFetchAllPaginated).toHaveBeenCalled())
@@ -60,5 +79,26 @@ describe('StatisticsTab shared ledger', () => {
     expect(screen.queryByRole('button', { name: '教練總表' })).not.toBeInTheDocument()
     expect(screen.queryByTestId('ledger-overview')).not.toBeInTheDocument()
     await waitFor(() => expect(mockedFetchAllPaginated).toHaveBeenCalled())
+  })
+
+  it('shows a retry instead of a partial coach overview when one source fails', async () => {
+    performanceMock.failingSection = 'designated_credit'
+    render(<StatisticsTab isMobile={false} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '教練總表' }))
+    expect(await screen.findByText(/總表載入失敗/)).toBeInTheDocument()
+    expect(screen.queryByTestId('ledger-overview')).not.toBeInTheDocument()
+
+    performanceMock.failingSection = null
+    fireEvent.click(screen.getByRole('button', { name: '重新載入' }))
+    expect(await screen.findByTestId('ledger-overview')).toBeInTheDocument()
+  })
+
+  it('reloads service data when the date changes', async () => {
+    render(<StatisticsTab isMobile={false} />)
+    await waitFor(() => expect(mockedFetchAllPaginated).toHaveBeenCalledTimes(2))
+
+    fireEvent.click(screen.getByRole('button', { name: '換日期' }))
+    await waitFor(() => expect(mockedFetchAllPaginated).toHaveBeenCalledTimes(4))
   })
 })

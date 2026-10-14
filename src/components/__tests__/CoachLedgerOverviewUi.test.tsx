@@ -40,7 +40,7 @@ describe('CoachLedgerOverview interactions', () => {
     const productSort = screen.getByRole('button', { name: '商品' })
     expect(productSort).toHaveAttribute('data-track', 'statistics_coach_overview_sort_product')
     fireEvent.click(productSort)
-    expect(screen.getAllByRole('row')[2]).toHaveTextContent('Jerry')
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('Jerry')
   })
 
   it('does not show unassigned product sales as a coach', () => {

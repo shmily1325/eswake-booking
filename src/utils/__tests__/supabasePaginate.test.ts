@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { fetchAllPaginated, chunkArray } from '../supabasePaginate'
+import { fetchAllPaginated, chunkArray, mapWithConcurrency } from '../supabasePaginate'
 
 describe('supabasePaginate', () => {
   describe('chunkArray', () => {
@@ -32,6 +32,23 @@ describe('supabasePaginate', () => {
           error: { message: 'db error' }
         }))
       ).rejects.toThrow('db error')
+    })
+  })
+
+  describe('mapWithConcurrency', () => {
+    it('限制同時執行的查詢數量並保留結果順序', async () => {
+      let active = 0
+      let maxActive = 0
+      const result = await mapWithConcurrency([1, 2, 3, 4, 5], 2, async (value) => {
+        active += 1
+        maxActive = Math.max(maxActive, active)
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        active -= 1
+        return value * 2
+      })
+
+      expect(maxActive).toBeLessThanOrEqual(2)
+      expect(result).toEqual([2, 4, 6, 8, 10])
     })
   })
 })

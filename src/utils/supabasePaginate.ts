@@ -20,6 +20,26 @@ export function chunkArray<T>(arr: T[], size: number): T[][] {
   return chunks
 }
 
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length)
+  let nextIndex = 0
+  const run = async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex
+      nextIndex += 1
+      results[index] = await worker(items[index])
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(Math.max(limit, 1), items.length) }, () => run()),
+  )
+  return results
+}
+
 /**
  * 分頁取完所有列（僅補齊 Supabase 1000 筆上限，不改查詢條件與排序）
  */
@@ -64,8 +84,10 @@ export async function fetchAllByBookingIds<T>(
   if (bookingIds.length === 0) return []
 
   const batches = chunkArray(bookingIds, IN_FILTER_BATCH_SIZE)
-  const batchResults = await Promise.all(
-    batches.map((batch) =>
+  const batchResults = await mapWithConcurrency(
+    batches,
+    3,
+    (batch) =>
       fetchAllPaginated<T>(async (from, to) => {
         let query = (supabase.from(table as never) as ReturnType<typeof supabase.from>)
           .select(select)
@@ -80,8 +102,7 @@ export async function fetchAllByBookingIds<T>(
           throw new Error(`${errorLabel} 查詢失敗: ${error.message}`)
         }
         return { data: data as T[] | null, error: null }
-      })
-    )
+      }),
   )
 
   return batchResults.flat()
@@ -103,8 +124,10 @@ export async function fetchAllInBatches<T, Id extends string | number>(
   if (ids.length === 0) return []
 
   const batches = chunkArray(ids, batchSize)
-  const batchResults = await Promise.all(
-    batches.map((batch) =>
+  const batchResults = await mapWithConcurrency(
+    batches,
+    3,
+    (batch) =>
       fetchAllPaginated<T>(async (from, to) => {
         let query = (supabase.from(table as never) as ReturnType<typeof supabase.from>)
           .select(select)
@@ -119,8 +142,7 @@ export async function fetchAllInBatches<T, Id extends string | number>(
           throw new Error(`${errorLabel} 查詢失敗: ${error.message}`)
         }
         return { data: data as T[] | null, error: null }
-      })
-    )
+      }),
   )
 
   return batchResults.flat()
