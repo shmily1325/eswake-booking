@@ -199,7 +199,7 @@ describe('CoachDesignatedHours', () => {
         delta_minutes: 330,
         occurred_at: '2026-09-01T12:00:00+08:00',
         expires_on: null,
-        note: null,
+        note: '轉帳確認',
         booking_participant_id: null,
       }],
     })
@@ -209,8 +209,9 @@ describe('CoachDesignatedHours', () => {
     fireEvent.click(await screen.findByText('Penny'))
     expect(await screen.findByText(/2026年10月/)).toBeInTheDocument()
     expect(screen.getByText(/2026年9月/)).toBeInTheDocument()
-    expect(screen.getAllByText('餘額（分）')).toHaveLength(2)
+    expect(screen.getAllByText('剩餘')).toHaveLength(2)
     expect(screen.getByRole('button', { name: '扣除 30 分，餘額 300 分' })).toBeInTheDocument()
+    expect(screen.getByText('轉帳確認')).toBeInTheDocument()
   })
 
   it('can split one backfilled report between regular and gift minutes', async () => {

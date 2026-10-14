@@ -2036,13 +2036,24 @@ function EntryList({
         const balanceAfter = runningBalances.get(entry.id) ?? 0
         const detailLabel = entryTypeLabel(entry)
         const expiry = entry.entry_type === 'credit' ? expiryLabel(entry.expires_on) : null
+        const dateLabel = entry.entry_type === 'credit'
+          ? entry.occurred_at.slice(5, 10).replace('-', '/')
+          : compactDate(entryDate)
+        const title = entry.entry_type === 'credit'
+          ? '新增指定課'
+          : (entry.boat_name || '未指定船')
+        const secondaryParts = [
+          entry.entry_type === 'credit' ? entry.note?.trim() : null,
+          (entry.gift_minutes ?? 0) > 0 ? detailLabel : null,
+          expiry,
+        ].filter(Boolean)
 
         return (
           <div key={entry.id}>
             {showMonth && (
               <div
                 style={{
-                  padding: '9px 14px',
+                  padding: isMobile ? '9px 12px' : '9px 16px',
                   borderBottom: `1px solid ${designSystem.colors.border.light}`,
                   background: designSystem.colors.background.main,
                   color: designSystem.colors.text.secondary,
@@ -2055,7 +2066,7 @@ function EntryList({
                 }}
               >
                 <span style={{ gridColumn: '1 / 3' }}>{monthLabel}</span>
-                <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>餘額（分）</span>
+                <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>剩餘</span>
               </div>
             )}
             <button
@@ -2063,11 +2074,18 @@ function EntryList({
               data-track="coach_designated_entry_open"
               aria-label={`${entry.entry_type === 'credit' ? '增加' : '扣除'} ${Math.abs(entry.delta_minutes)} 分，餘額 ${balanceAfter} 分`}
               onClick={() => onEdit(entry)}
+              onMouseEnter={(event) => {
+                if (!isMobile) event.currentTarget.style.background = designSystem.colors.background.hover
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.background = designSystem.colors.background.card
+              }}
               style={{
                 width: '100%',
-                minHeight: isMobile ? 60 : 56,
-                padding: '11px 14px',
+                minHeight: isMobile ? 52 : 56,
+                padding: isMobile ? '10px 12px' : '12px 16px',
                 border: 0,
+                borderRadius: 0,
                 borderBottom: index < entries.length - 1
                   ? `1px solid ${designSystem.colors.border.light}`
                   : 0,
@@ -2078,22 +2096,48 @@ function EntryList({
                 alignItems: 'center',
                 textAlign: 'left',
                 cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
               }}
             >
               <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                <span style={{ display: 'block', color: designSystem.colors.text.secondary, fontSize: getFontSize('bodySmall', isMobile) }}>
-                  {entry.entry_type === 'credit'
-                    ? entry.occurred_at.slice(5, 10).replace('-', '/')
-                    : compactDate(entryDate)}
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    flexWrap: 'wrap',
+                    gap: '2px 5px',
+                    lineHeight: 1.35,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: designSystem.colors.text.secondary,
+                      fontSize: getFontSize('bodySmall', isMobile),
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {dateLabel}
+                  </span>
+                  <span aria-hidden="true" style={{ color: designSystem.colors.text.disabled }}>·</span>
+                  <span style={{ color: designSystem.colors.text.primary, fontWeight: 550 }}>
+                    {title}
+                  </span>
                 </span>
-                <span style={{ display: 'block', marginTop: 2, fontWeight: 600 }}>
-                  {entry.entry_type === 'credit'
-                    ? (entry.note || '新增指定課')
-                    : (entry.boat_name || '未指定船')}
-                </span>
-                {(detailLabel || expiry) && (
-                  <span style={{ display: 'block', marginTop: 3, color: designSystem.colors.text.secondary, fontSize: getFontSize('caption', isMobile) }}>
-                    {[detailLabel, expiry].filter(Boolean).join(' · ')}
+                {secondaryParts.length > 0 && (
+                  <span
+                    title={entry.note || undefined}
+                    style={{
+                      display: '-webkit-box',
+                      marginTop: 3,
+                      overflow: 'hidden',
+                      WebkitBoxOrient: 'vertical',
+                      WebkitLineClamp: 2,
+                      color: designSystem.colors.text.secondary,
+                      fontSize: getFontSize('caption', isMobile),
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {secondaryParts.join(' · ')}
                   </span>
                 )}
               </span>
