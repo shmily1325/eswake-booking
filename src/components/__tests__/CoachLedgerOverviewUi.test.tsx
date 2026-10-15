@@ -37,7 +37,8 @@ describe('CoachLedgerOverview interactions', () => {
       />,
     )
 
-    const productSort = screen.getByRole('button', { name: '商品' })
+    expect(screen.queryByRole('button', { name: '教練排序' })).not.toBeInTheDocument()
+    const productSort = screen.getByRole('button', { name: '商品排序' })
     expect(productSort).toHaveAttribute('data-track', 'statistics_coach_overview_sort_product')
     fireEvent.click(productSort)
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('Jerry')

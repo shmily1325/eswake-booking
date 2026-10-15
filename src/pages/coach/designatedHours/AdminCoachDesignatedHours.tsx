@@ -213,6 +213,7 @@ export function AdminCoachDesignatedHours({
                     </div>
                     <div>
                       {coach.students.map((student, index) => {
+                        const regularBalance = student.regular_balance ?? student.balance
                         const expiry = expiryText(student)
                         const expired = Boolean(
                           (student.regular_expires_on && student.regular_expires_on < getLocalDateString())
@@ -267,13 +268,19 @@ export function AdminCoachDesignatedHours({
                                 fontSize: getFontSize('bodySmall', isMobile),
                               }}
                             >
-                              <strong>{student.regular_balance ?? student.balance} 分</strong>
+                              <strong style={{
+                                color: regularBalance < 0
+                                  ? designSystem.colors.danger[700]
+                                  : designSystem.colors.text.primary,
+                              }}>
+                                {regularBalance} 分
+                              </strong>
                               {student.has_gift_entries && (
                                 <span
                                   style={{
                                     display: 'block',
                                     marginTop: 3,
-                                    color: designSystem.colors.secondary[700],
+                                    color: designSystem.colors.warning[700],
                                     fontSize: getFontSize('caption', isMobile),
                                   }}
                                 >

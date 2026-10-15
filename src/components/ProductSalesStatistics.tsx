@@ -143,6 +143,7 @@ export function ProductSalesStatistics({
       setError(null)
       setGroups([])
       setExpandedGroupIds(new Set())
+      onDataChange?.([])
       onStatusChange?.('loading')
       try {
         const range = dateRange(selectedDate)
@@ -207,8 +208,15 @@ export function ProductSalesStatistics({
         }
         const coachFilter = selectedCoachId === 'all' ? undefined : selectedCoachId
         if (!cancelled) {
-          setGroups(buildSalespersonGroups(settlements, meta, coachFilter))
+          const nextGroups = buildSalespersonGroups(settlements, meta, coachFilter)
+          setGroups(nextGroups)
           setExpandedGroupIds(new Set())
+          onDataChange?.(nextGroups.map((group) => ({
+            id: group.id,
+            name: group.name,
+            value: group.total,
+            count: group.qty,
+          })))
           onStatusChange?.('success')
         }
       } catch (cause) {
@@ -226,7 +234,7 @@ export function ProductSalesStatistics({
     return () => {
       cancelled = true
     }
-  }, [onStatusChange, reloadToken, selectedCoachId, selectedDate])
+  }, [onDataChange, onStatusChange, reloadToken, selectedCoachId, selectedDate])
 
   const visibleGroups = groups
   const summary = useMemo(
@@ -239,15 +247,6 @@ export function ProductSalesStatistics({
   const assignedGroups = visibleGroups.filter((group) => group.id !== 'unassigned')
   const unassignedGroup = visibleGroups.find((group) => group.id === 'unassigned')
   const maxAssignedTotal = Math.max(1, ...assignedGroups.map((group) => group.total))
-
-  useEffect(() => {
-    onDataChange?.(visibleGroups.map((group) => ({
-      id: group.id,
-      name: group.name,
-      value: group.total,
-      count: group.qty,
-    })))
-  }, [onDataChange, visibleGroups])
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroupIds((current) => {

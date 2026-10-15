@@ -22,7 +22,7 @@ describe('buildCoachLedgerOverview', () => {
         designated_credit: [{
           id: 'coach-1',
           name: 'Pierre',
-          value: 330,
+          value: 300,
           count: 1,
           regularValue: 300,
           giftValue: 30,
@@ -41,7 +41,7 @@ describe('buildCoachLedgerOverview', () => {
       teaching: 120,
       driving: 30,
       lesson: 60,
-      credit: 330,
+      credit: 300,
       regularCredit: 300,
       giftCredit: 30,
       product: 4800,

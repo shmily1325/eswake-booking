@@ -780,9 +780,11 @@ export function CoachDesignatedHours({
               <span style={{ display: 'flex', gap: 10, marginTop: 6, flexWrap: 'wrap' }}>
                 <span
                   style={{
-                    color: (student.regular_balance ?? student.balance) === 0
-                      ? designSystem.colors.text.secondary
-                      : designSystem.colors.info[700],
+                    color: (student.regular_balance ?? student.balance) < 0
+                      ? designSystem.colors.danger[700]
+                      : (student.regular_balance ?? student.balance) === 0
+                        ? designSystem.colors.text.secondary
+                        : designSystem.colors.info[700],
                     fontSize: getFontSize('bodySmall', isMobile),
                   }}
                 >
@@ -825,7 +827,7 @@ export function CoachDesignatedHours({
                 fontWeight: 700,
                 fontVariantNumeric: 'tabular-nums',
                 color: student.balance < 0
-                  ? designSystem.colors.warning[700]
+                  ? designSystem.colors.danger[700]
                   : designSystem.colors.text.primary,
               }}
             >

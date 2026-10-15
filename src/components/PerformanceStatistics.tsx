@@ -73,7 +73,7 @@ export interface DesignatedCreditGroup {
   coachName: string
   regularMinutes: number
   giftMinutes: number
-  totalMinutes: number
+  soldMinutes: number
   details: CoachDesignatedCreditReportEntry[]
 }
 
@@ -169,12 +169,13 @@ export function buildDesignatedCreditGroups(
       coachName: entry.coach_name,
       regularMinutes: 0,
       giftMinutes: 0,
-      totalMinutes: 0,
+      soldMinutes: 0,
       details: [],
     }
-    group.regularMinutes += Number(entry.regular_minutes || 0)
+    const regularMinutes = Number(entry.regular_minutes || 0)
+    group.regularMinutes += regularMinutes
     group.giftMinutes += Number(entry.gift_minutes || 0)
-    group.totalMinutes += Number(entry.total_minutes || 0)
+    group.soldMinutes += regularMinutes
     group.details.push(entry)
     groups.set(group.coachId, group)
   }
@@ -184,7 +185,7 @@ export function buildDesignatedCreditGroups(
       details: group.details.sort((a, b) =>
         b.occurred_at.localeCompare(a.occurred_at) || b.id - a.id),
     }))
-    .sort((a, b) => b.totalMinutes - a.totalMinutes || a.coachName.localeCompare(b.coachName))
+    .sort((a, b) => b.soldMinutes - a.soldMinutes || a.coachName.localeCompare(b.coachName))
 }
 
 export function PerformanceStatistics({
@@ -280,6 +281,7 @@ function DesignatedLessonStatistics({
       setLoading(true)
       setError(null)
       setGroups([])
+      onDataChange?.([])
       onStatusChange?.('loading')
       try {
         const range = dateRange(selectedDate)
@@ -316,7 +318,14 @@ function DesignatedLessonStatistics({
           '指定課扣款',
         )
         if (!cancelled) {
-          setGroups(buildDesignatedLessonGroups(participants, transactions))
+          const nextGroups = buildDesignatedLessonGroups(participants, transactions)
+          setGroups(nextGroups)
+          onDataChange?.(nextGroups.map((group) => ({
+            id: group.coachId,
+            name: group.coachName,
+            value: group.minutes,
+            count: group.details.length,
+          })))
           onStatusChange?.('success')
         }
       } catch (cause) {
@@ -334,7 +343,7 @@ function DesignatedLessonStatistics({
     return () => {
       cancelled = true
     }
-  }, [onStatusChange, reloadToken, selectedCoachId, selectedDate])
+  }, [onDataChange, onStatusChange, reloadToken, selectedCoachId, selectedDate])
 
   const totals = useMemo(() => groups.reduce(
     (sum, group) => ({
@@ -343,15 +352,6 @@ function DesignatedLessonStatistics({
     }),
     { minutes: 0, count: 0 },
   ), [groups])
-
-  useEffect(() => {
-    onDataChange?.(groups.map((group) => ({
-      id: group.coachId,
-      name: group.coachName,
-      value: group.minutes,
-      count: group.details.length,
-    })))
-  }, [groups, onDataChange])
 
   return (
     <PerformanceSection
@@ -425,6 +425,7 @@ function DesignatedCreditStatistics({
       setLoading(true)
       setError(null)
       setGroups([])
+      onDataChange?.([])
       onStatusChange?.('loading')
       try {
         const range = dateRange(selectedDate)
@@ -434,7 +435,16 @@ function DesignatedCreditStatistics({
           coachId: selectedCoachId === 'all' ? undefined : selectedCoachId,
         })
         if (!cancelled) {
-          setGroups(buildDesignatedCreditGroups(entries))
+          const nextGroups = buildDesignatedCreditGroups(entries)
+          setGroups(nextGroups)
+          onDataChange?.(nextGroups.map((group) => ({
+            id: group.coachId,
+            name: group.coachName,
+            value: group.soldMinutes,
+            count: group.details.length,
+            regularValue: group.regularMinutes,
+            giftValue: group.giftMinutes,
+          })))
           onStatusChange?.('success')
         }
       } catch (cause) {
@@ -452,27 +462,15 @@ function DesignatedCreditStatistics({
     return () => {
       cancelled = true
     }
-  }, [onStatusChange, reloadToken, selectedCoachId, selectedDate])
+  }, [onDataChange, onStatusChange, reloadToken, selectedCoachId, selectedDate])
 
   const totals = useMemo(() => groups.reduce(
     (sum, group) => ({
-      regular: sum.regular + group.regularMinutes,
+      sold: sum.sold + group.soldMinutes,
       gift: sum.gift + group.giftMinutes,
-      total: sum.total + group.totalMinutes,
     }),
-    { regular: 0, gift: 0, total: 0 },
+    { sold: 0, gift: 0 },
   ), [groups])
-
-  useEffect(() => {
-    onDataChange?.(groups.map((group) => ({
-      id: group.coachId,
-      name: group.coachName,
-      value: group.totalMinutes,
-      count: group.details.length,
-      regularValue: group.regularMinutes,
-      giftValue: group.giftMinutes,
-    })))
-  }, [groups, onDataChange])
 
   return (
     <PerformanceSection
@@ -483,7 +481,7 @@ function DesignatedCreditStatistics({
       error={error}
       empty={groups.length === 0}
       emptyText={selectedDate.length === 10 ? '當日無指定課售出時數' : '當月無指定課售出時數'}
-      summary={`總計 ${totals.total} 分 · 購買 ${totals.regular} 分 · 贈送 ${totals.gift} 分`}
+      summary={`售出 ${totals.sold} 分 · 另贈 ${totals.gift} 分（不計入售出）`}
       onRetry={() => setReloadToken((value) => value + 1)}
     >
       {selectedCoachId === 'all' && groups.length > 1 && (
@@ -493,8 +491,8 @@ function DesignatedCreditStatistics({
           rows={groups.map((group) => ({
             id: group.coachId,
             name: group.coachName,
-            minutes: group.totalMinutes,
-            detail: `${group.totalMinutes}分 (購買${group.regularMinutes}／贈送${group.giftMinutes})`,
+            minutes: group.soldMinutes,
+            detail: `${group.soldMinutes}分（另贈${group.giftMinutes}分）`,
           }))}
         />
       )}
@@ -505,8 +503,8 @@ function DesignatedCreditStatistics({
         groups={groups.map((group) => ({
           id: group.coachId,
           name: group.coachName,
-          summary: `總計 ${group.totalMinutes}分 · 購買 ${group.regularMinutes}分 · 贈送 ${group.giftMinutes}分`,
-          headers: ['新增日', '會員', '購買', '贈送', '總分鐘', '備註'],
+          summary: `售出 ${group.soldMinutes}分 · 另贈 ${group.giftMinutes}分（不計入售出）`,
+          headers: ['新增日', '會員', '售出', '贈送', '入帳合計', '備註'],
           rows: group.details.map((detail) => [
             detail.occurred_at.slice(0, 10),
             detail.member_name,

@@ -96,18 +96,18 @@ export function CoachLedgerOverview({
   serviceRows,
   performanceRows,
 }: Props) {
-  type SortKey = 'name' | 'teaching' | 'driving' | 'lesson' | 'credit' | 'product'
-  const [sort, setSort] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({
-    key: 'name',
+  type SortKey = 'teaching' | 'driving' | 'lesson' | 'credit' | 'product'
+  const [sort, setSort] = useState<{ key: SortKey | null; direction: 'asc' | 'desc' }>({
+    key: null,
     direction: 'asc',
   })
   const rows = useMemo(
     () => {
       const next = buildCoachLedgerOverview(serviceRows, performanceRows)
       return next.sort((a, b) => {
-        if (sort.key === 'name') {
+        if (sort.key === null) {
           const result = a.name.localeCompare(b.name)
-          return sort.direction === 'asc' ? result : -result
+          return result
         }
         const result = a[sort.key] - b[sort.key]
         return sort.direction === 'asc' ? result : -result
@@ -119,12 +119,14 @@ export function CoachLedgerOverview({
   const setSortKey = (key: SortKey) => {
     setSort((current) => ({
       key,
-      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc',
+      direction: current.key === key
+        ? current.direction === 'desc' ? 'asc' : 'desc'
+        : 'desc',
     }))
   }
   const sortMark = (key: SortKey) => sort.key === key
     ? (sort.direction === 'desc' ? ' ↓' : ' ↑')
-    : ''
+    : ' ↕'
   const value = (amount: number, suffix = '分') => amount === 0
     ? '—'
     : `${amount.toLocaleString()} ${suffix}`
@@ -133,17 +135,24 @@ export function CoachLedgerOverview({
       type="button"
       data-track={`statistics_coach_overview_sort_${sortKey}`}
       onClick={() => setSortKey(sortKey)}
+      aria-label={`${children}排序`}
       style={{
+        width: 28,
+        height: 28,
         padding: 0,
-        border: 0,
-        background: 'transparent',
+        border: `1px solid ${sort.key === sortKey
+          ? designSystem.colors.border.dark
+          : designSystem.colors.border.main}`,
+        borderRadius: designSystem.borderRadius.sm,
+        background: designSystem.colors.background.card,
         color: designSystem.colors.text.secondary,
         fontSize: getFontSize('bodySmall', isMobile),
         fontWeight: 600,
         cursor: 'pointer',
+        lineHeight: 1,
       }}
     >
-      {children}{sortMark(sortKey)}
+      {sortMark(sortKey).trim()}
     </button>
   )
 
@@ -247,8 +256,17 @@ export function CoachLedgerOverview({
           }}>
             <thead>
               <tr>
+                <th style={{
+                  padding: '12px 16px',
+                  textAlign: 'left',
+                  borderBottom: `1px solid ${designSystem.colors.border.main}`,
+                  color: designSystem.colors.text.secondary,
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                }}>
+                  教練
+                </th>
                 {([
-                  ['name', '教練'],
                   ['teaching', '教學'],
                   ['driving', '駕駛'],
                   ['lesson', '指定單堂'],
@@ -256,12 +274,22 @@ export function CoachLedgerOverview({
                   ['product', '商品'],
                 ] as Array<[SortKey, string]>).map(([key, label]) => (
                   <th key={key} style={{
-                    padding: key === 'name' ? '12px 16px' : '12px',
-                    textAlign: key === 'name' ? 'left' : 'right',
+                    padding: '8px 12px',
+                    textAlign: 'right',
                     borderBottom: `1px solid ${designSystem.colors.border.main}`,
                     whiteSpace: 'nowrap',
                   }}>
-                    <SortButton sortKey={key}>{label}</SortButton>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'flex-end',
+                      gap: 6,
+                      color: designSystem.colors.text.secondary,
+                      fontWeight: 600,
+                    }}>
+                      {label}
+                      <SortButton sortKey={key}>{label}</SortButton>
+                    </span>
                   </th>
                 ))}
               </tr>
@@ -274,11 +302,11 @@ export function CoachLedgerOverview({
                     [row.teaching, `${row.teachingCount} 筆`],
                     [row.driving, `${row.drivingCount} 筆`],
                     [row.lesson, `${row.lessonCount} 筆`],
-                    [row.credit, row.credit === 0 ? '' : `購 ${row.regularCredit}・贈 ${row.giftCredit}`],
+                    [row.credit, row.giftCredit > 0 ? `另贈 ${row.giftCredit} 分（不計）` : ''],
                   ].map(([amount, detail], index) => (
                     <td key={index} style={{ padding: '12px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{value(Number(amount))}</strong>
-                      {detail && Number(amount) !== 0 && (
+                      {detail && (Number(amount) !== 0 || index === 3) && (
                         <span style={{ display: 'block', marginTop: 2, color: designSystem.colors.text.disabled, fontSize: getFontSize('caption', false) }}>
                           {detail}
                         </span>

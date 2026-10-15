@@ -50,7 +50,7 @@ describe('performance report aggregation', () => {
     })
   })
 
-  it('separates purchased and gifted designated credit minutes by coach', () => {
+  it('counts only purchased minutes as designated credit sales', () => {
     const entries: CoachDesignatedCreditReportEntry[] = [
       {
         id: 1,
@@ -83,7 +83,7 @@ describe('performance report aggregation', () => {
         coachId: 'coach-1',
         regularMinutes: 360,
         giftMinutes: 30,
-        totalMinutes: 390,
+        soldMinutes: 360,
       },
     ])
   })

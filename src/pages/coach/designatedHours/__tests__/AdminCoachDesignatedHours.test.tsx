@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fetchAdminCoachDesignatedOverview } from '../api'
 import { AdminCoachDesignatedHours } from '../AdminCoachDesignatedHours'
+import { designSystem } from '../../../../styles/designSystem'
 
 vi.mock('../api', () => ({
   fetchAdminCoachDesignatedOverview: vi.fn(),
@@ -73,6 +74,36 @@ describe('AdminCoachDesignatedHours', () => {
     expect(screen.getByTestId('coach-designated-hours')).toHaveTextContent(
       'coach-jerry:member-penny',
     )
+  })
+
+  it('highlights negative designated balances in red', async () => {
+    mockedFetchOverview.mockResolvedValueOnce([{
+      coach_id: 'coach-jerry',
+      coach_name: 'Jerry',
+      students: [{
+        member_id: 'member-penny',
+        name: 'Penny',
+        nickname: null,
+        membership_type: 'general',
+        balance: -285,
+        regular_balance: -285,
+        gift_balance: 5,
+        has_gift_entries: true,
+        regular_expires_on: null,
+        gift_expires_on: null,
+        last_activity_at: '2026-10-09T10:00:00+08:00',
+        entry_count: 2,
+      }],
+    }])
+
+    render(<AdminCoachDesignatedHours isMobile={false} />)
+
+    expect(await screen.findByText('-285 分')).toHaveStyle({
+      color: designSystem.colors.danger[700],
+    })
+    expect(screen.getByText('贈送 5 分')).toHaveStyle({
+      color: designSystem.colors.warning[700],
+    })
   })
 
   it('wraps all coach buttons into mobile-friendly rows', async () => {
