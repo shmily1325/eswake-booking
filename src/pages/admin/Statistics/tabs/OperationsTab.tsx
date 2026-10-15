@@ -1,8 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useResponsive } from '../../../../hooks/useResponsive'
 import { designSystem, getFontSize } from '../../../../styles/designSystem'
 import { getCalendarDateString, getVenueDateString } from '../../../../utils/date'
 import type { BoatUsageRangeRow } from '../../../../utils/boatUsageRangeStats'
+import {
+  loadCoachPerformanceMetric,
+  type CoachPerformanceMetric,
+  type CoachPerformanceMetricRow,
+} from '../../../../utils/coachPerformanceMetrics'
 import {
   CoachMemberRankings,
   SummaryCard,
@@ -163,6 +168,12 @@ export function OperationsTab({
 }: OperationsTabProps) {
   const { isMobile } = useResponsive()
   const [subTab, setSubTab] = useState<'coach' | 'member'>('coach')
+  const [coachMetric, setCoachMetric] = useState<'service' | CoachPerformanceMetric>('service')
+  const [performanceRows, setPerformanceRows] = useState<CoachPerformanceMetricRow[]>([])
+  const [performanceLoading, setPerformanceLoading] = useState(false)
+  const [performanceError, setPerformanceError] = useState<string | null>(null)
+  const [performanceReloadToken, setPerformanceReloadToken] = useState(0)
+  const performanceCacheRef = useRef(new Map<string, CoachPerformanceMetricRow[]>())
   const currentYear = Number(getVenueDateString().slice(0, 4))
 
   const quickMonths = Array.from({ length: 6 }, (_, index) => {
@@ -194,6 +205,69 @@ export function OperationsTab({
   const memberStats = isMonthly ? monthlyMemberStats : annualMemberStats
   const boatUsage = isMonthly ? monthlyBoatUsage : annualBoatUsage
   const periodWord = isMonthly ? '本月' : '本年'
+  const performanceRange = isMonthly ? monthRange : yearRange
+  const performanceStartDate = performanceRange?.startDate
+  const performanceEndDate = performanceRange?.endDateStr
+
+  useEffect(() => {
+    if (
+      subTab !== 'coach'
+      || coachMetric === 'service'
+      || !performanceStartDate
+      || !performanceEndDate
+    ) {
+      setPerformanceLoading(false)
+      setPerformanceError(null)
+      return
+    }
+
+    const cacheKey = `${coachMetric}|${performanceStartDate}|${performanceEndDate}`
+    const cached = performanceCacheRef.current.get(cacheKey)
+    if (cached) {
+      setPerformanceRows(cached)
+      setPerformanceLoading(false)
+      setPerformanceError(null)
+      return
+    }
+
+    let cancelled = false
+    setPerformanceRows([])
+    setPerformanceLoading(true)
+    setPerformanceError(null)
+    void loadCoachPerformanceMetric({
+      metric: coachMetric,
+      startDate: performanceStartDate,
+      endDate: performanceEndDate,
+    }).then((rows) => {
+      if (cancelled) return
+      performanceCacheRef.current.set(cacheKey, rows)
+      setPerformanceRows(rows)
+    }).catch((cause) => {
+      if (cancelled) return
+      setPerformanceError(cause instanceof Error ? cause.message : '載入教練業績排行失敗')
+    }).finally(() => {
+      if (!cancelled) setPerformanceLoading(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    coachMetric,
+    performanceEndDate,
+    performanceReloadToken,
+    performanceStartDate,
+    subTab,
+  ])
+
+  const retryPerformance = () => {
+    if (coachMetric !== 'service' && performanceStartDate && performanceEndDate) {
+      performanceCacheRef.current.delete(
+        `${coachMetric}|${performanceStartDate}|${performanceEndDate}`,
+      )
+    }
+    setPerformanceReloadToken((value) => value + 1)
+  }
 
   const rangeNote = isMonthly
     ? monthRange
@@ -382,6 +456,51 @@ export function OperationsTab({
                 會員統計
               </button>
             </div>
+            {subTab === 'coach' && (
+              <div style={{
+                display: 'flex',
+                gap: 8,
+                marginTop: designSystem.spacing.sm,
+                overflowX: 'auto',
+                paddingBottom: 2,
+                WebkitOverflowScrolling: 'touch',
+              }}>
+                {([
+                  ['service', '教學／駕駛'],
+                  ['designated_lesson', '指定單堂'],
+                  ['designated_credit', '指定售出'],
+                  ['product', '商品'],
+                ] as const).map(([value, label]) => {
+                  const active = coachMetric === value
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      data-track={`dashboard_coach_metric_${value}`}
+                      onClick={() => setCoachMetric(value)}
+                      style={{
+                        flexShrink: 0,
+                        padding: '8px 12px',
+                        border: `1px solid ${active
+                          ? designSystem.colors.primary[500]
+                          : designSystem.colors.border.main}`,
+                        borderRadius: designSystem.borderRadius.md,
+                        background: active
+                          ? designSystem.colors.primary[500]
+                          : designSystem.colors.background.card,
+                        color: active ? 'white' : designSystem.colors.text.secondary,
+                        fontSize: getFontSize('button', isMobile),
+                        fontWeight: active ? 600 : 500,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </section>
 
           <CoachMemberRankings
@@ -389,6 +508,11 @@ export function OperationsTab({
             coachStats={coachStats}
             memberStats={memberStats}
             periodWord={periodWord}
+            coachMetric={coachMetric}
+            performanceRows={performanceRows}
+            performanceLoading={performanceLoading}
+            performanceError={performanceError}
+            onRetryPerformance={retryPerformance}
           />
 
           <BoatUsageDetails rows={boatUsage} />

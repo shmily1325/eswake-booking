@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSalespersonGroups } from '../ProductSalesStatistics'
+import { buildSalespersonGroups } from '../../utils/productSalesData'
 
 describe('buildSalespersonGroups', () => {
   it('groups settled product amounts by salesperson and keeps unassigned separate', () => {

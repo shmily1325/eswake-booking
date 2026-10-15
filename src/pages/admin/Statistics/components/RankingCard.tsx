@@ -25,6 +25,8 @@ interface RankingCardProps {
   emptyText?: string
   showRank?: boolean
   trackId?: string
+  formatValue?: (value: number) => string
+  countUnit?: string
 }
 
 export function RankingCard({
@@ -37,6 +39,8 @@ export function RankingCard({
   emptyText = '暫無資料',
   showRank = true,
   trackId,
+  formatValue = formatDuration,
+  countUnit = '筆',
 }: RankingCardProps) {
   const { isMobile } = useResponsive()
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -163,7 +167,7 @@ export function RankingCard({
                           color: designSystem.colors.text.secondary,
                           fontSize: getFontSize('bodySmall', isMobile)
                         }}>
-                          {item.count} 筆
+                          {item.count} {countUnit}
                         </span>
                       )}
                       <span style={{
@@ -171,7 +175,7 @@ export function RankingCard({
                         fontSize: getFontSize('body', isMobile),
                         fontWeight: '600'
                       }}>
-                        {formatDuration(item.value)}
+                        {formatValue(item.value)}
                       </span>
                     </div>
                   </div>

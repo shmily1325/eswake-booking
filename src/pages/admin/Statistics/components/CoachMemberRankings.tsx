@@ -1,6 +1,10 @@
 import type { CSSProperties } from 'react'
 import { useResponsive } from '../../../../hooks/useResponsive'
-import { designSystem, getFontSize } from '../../../../styles/designSystem'
+import { designSystem, getButtonStyle, getFontSize } from '../../../../styles/designSystem'
+import type {
+  CoachPerformanceMetric,
+  CoachPerformanceMetricRow,
+} from '../../../../utils/coachPerformanceMetrics'
 import { RankingCard } from './RankingCard'
 import type { CoachStats, MemberStats } from '../types'
 import { formatDuration } from '../utils'
@@ -12,6 +16,11 @@ interface CoachMemberRankingsProps {
   coachStats: CoachStats[]
   memberStats: MemberStats[]
   periodWord: PeriodWord
+  coachMetric: 'service' | CoachPerformanceMetric
+  performanceRows: CoachPerformanceMetricRow[]
+  performanceLoading: boolean
+  performanceError: string | null
+  onRetryPerformance: () => void
 }
 
 export function CoachMemberRankings({
@@ -19,10 +28,85 @@ export function CoachMemberRankings({
   coachStats,
   memberStats,
   periodWord,
+  coachMetric,
+  performanceRows,
+  performanceLoading,
+  performanceError,
+  onRetryPerformance,
 }: CoachMemberRankingsProps) {
   const { isMobile } = useResponsive()
 
   if (subTab === 'coach') {
+    if (coachMetric !== 'service') {
+      if (performanceLoading) {
+        return (
+          <div style={{
+            padding: designSystem.spacing.xl,
+            textAlign: 'center',
+            color: designSystem.colors.text.secondary,
+            fontSize: getFontSize('body', isMobile),
+          }}>
+            載入排行中…
+          </div>
+        )
+      }
+      if (performanceError) {
+        return (
+          <div style={{ padding: designSystem.spacing.xl, textAlign: 'center' }}>
+            <div style={{
+              marginBottom: designSystem.spacing.md,
+              color: designSystem.colors.danger[700],
+              fontSize: getFontSize('body', isMobile),
+            }}>
+              {performanceError}
+            </div>
+            <button
+              type="button"
+              onClick={onRetryPerformance}
+              style={getButtonStyle('outline', 'small', isMobile)}
+            >
+              重新載入
+            </button>
+          </div>
+        )
+      }
+
+      const config = {
+        designated_lesson: {
+          title: '指定單堂排行',
+          subtitle: undefined,
+          emptyText: `${periodWord}無指定單堂記錄`,
+          trackId: 'dashboard_designated_lesson_ranking',
+        },
+        designated_credit: {
+          title: '指定售出排行',
+          subtitle: '僅計購買，不含贈送',
+          emptyText: `${periodWord}無指定售出記錄`,
+          trackId: 'dashboard_designated_credit_ranking',
+        },
+        product: {
+          title: '商品銷售排行',
+          subtitle: undefined,
+          emptyText: `${periodWord}無商品銷售記錄`,
+          trackId: 'dashboard_product_salesperson_ranking',
+        },
+      }[coachMetric]
+
+      return (
+        <RankingCard
+          title={config.title}
+          subtitle={config.subtitle}
+          items={performanceRows}
+          emptyText={config.emptyText}
+          trackId={config.trackId}
+          formatValue={coachMetric === 'product'
+            ? (value) => `$${value.toLocaleString()}`
+            : undefined}
+          countUnit={coachMetric === 'product' ? '件' : '筆'}
+        />
+      )
+    }
+
     return (
       <>
         <RankingCard
@@ -125,7 +209,7 @@ export function CoachMemberRankings({
       title="會員時數排行"
       trackId="dashboard_member_ranking"
       subtitle="點擊查看常用教練/船"
-      items={memberStats.slice(0, 20).map(m => ({
+      items={memberStats.slice(0, 30).map(m => ({
         id: m.memberId,
         name: m.memberName,
         value: m.totalMinutes,
