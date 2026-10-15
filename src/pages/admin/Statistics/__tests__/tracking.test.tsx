@@ -109,8 +109,26 @@ describe('Dashboard click tracking', () => {
 
   it('loads a coach performance ranking only after its button is selected', async () => {
     loadCoachPerformanceMetric.mockReset()
-    loadCoachPerformanceMetric.mockResolvedValue([
-      { id: 'coach-1', name: 'Jerry', value: 300, count: 1 },
+    loadCoachPerformanceMetric.mockImplementation(async ({ metric }) => [
+      metric === 'product'
+        ? {
+            id: 'coach-1',
+            name: 'Jerry',
+            value: 4800,
+            count: 2,
+            breakdown: [
+              { id: 'product-1', name: '商品 A', value: 4800, count: 2 },
+            ],
+          }
+        : {
+            id: 'coach-1',
+            name: 'Jerry',
+            value: 300,
+            count: 1,
+            breakdown: [
+              { id: 'member-1', name: '會員 A', value: 300, count: 1 },
+            ],
+          },
     ])
     render(
       <OperationsTab
@@ -143,15 +161,19 @@ describe('Dashboard click tracking', () => {
     await waitFor(() => expect(loadCoachPerformanceMetric).toHaveBeenCalledWith(
       expect.objectContaining({ metric: 'designated_credit' }),
     ))
-    expect(await screen.findByText(/Jerry/)).toBeInTheDocument()
+    const coachRow = await screen.findByText(/Jerry/)
     expect(screen.getByText('300 分')).toBeInTheDocument()
+    fireEvent.click(coachRow.closest('[data-track]')!)
+    expect(screen.getAllByText('會員統計')).toHaveLength(2)
+    expect(screen.getByText('會員 A')).toBeInTheDocument()
+    expect(screen.getByText('1 次・300 分')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '商品' }))
     await waitFor(() => expect(loadCoachPerformanceMetric).toHaveBeenCalledWith(
       expect.objectContaining({ metric: 'product' }),
     ))
-    expect(await screen.findByText('$300')).toBeInTheDocument()
-    expect(screen.getByText('1 件')).toBeInTheDocument()
+    expect(await screen.findByText('$4,800')).toBeInTheDocument()
+    expect(screen.getByText('2 件')).toBeInTheDocument()
   })
 
   it('shows the top 30 members', () => {

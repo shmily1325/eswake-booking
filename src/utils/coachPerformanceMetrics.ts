@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { fetchCoachDesignatedCreditReport } from '../pages/coach/designatedHours/api'
 import type { CoachDesignatedCreditReportEntry } from '../pages/coach/designatedHours/types'
-import { fetchProductSalesGroups } from './productSalesData'
+import { fetchProductSalesGroups, type SalespersonGroup } from './productSalesData'
 import { fetchAllPaginated } from './supabasePaginate'
 
 export type CoachPerformanceMetric = 'designated_lesson' | 'designated_credit' | 'product'
@@ -11,18 +11,31 @@ export interface CoachPerformanceMetricRow {
   name: string
   value: number
   count: number
+  breakdown: CoachPerformanceBreakdownRow[]
+}
+
+export interface CoachPerformanceBreakdownRow {
+  id: string
+  name: string
+  value: number
+  count: number
 }
 
 interface DesignatedLessonMetricRecord {
   coach_id: string | null
   duration_min: number | null
+  participant_name: string | null
+  member_id: string | null
   coaches: { name: string } | null
+  members: { name: string; nickname: string | null } | null
 }
 
 export function aggregateDesignatedLessonMetrics(
   records: DesignatedLessonMetricRecord[],
 ): CoachPerformanceMetricRow[] {
-  const rows = new Map<string, CoachPerformanceMetricRow>()
+  const rows = new Map<string, CoachPerformanceMetricRow & {
+    breakdownMap: Map<string, CoachPerformanceBreakdownRow>
+  }>()
   records.forEach((record) => {
     if (!record.coach_id) return
     const row = rows.get(record.coach_id) ?? {
@@ -30,18 +43,39 @@ export function aggregateDesignatedLessonMetrics(
       name: record.coaches?.name || '未知',
       value: 0,
       count: 0,
+      breakdown: [],
+      breakdownMap: new Map<string, CoachPerformanceBreakdownRow>(),
     }
-    row.value += Number(record.duration_min || 0)
+    const minutes = Number(record.duration_min || 0)
+    row.value += minutes
     row.count += 1
+    const studentId = record.member_id || `guest:${record.participant_name || '未知'}`
+    const student = row.breakdownMap.get(studentId) ?? {
+      id: studentId,
+      name: record.members?.nickname || record.members?.name || record.participant_name || '未知學生',
+      value: 0,
+      count: 0,
+    }
+    student.value += minutes
+    student.count += 1
+    row.breakdownMap.set(studentId, student)
     rows.set(row.id, row)
   })
-  return [...rows.values()].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name))
+  return [...rows.values()]
+    .map(({ breakdownMap, ...row }) => ({
+      ...row,
+      breakdown: [...breakdownMap.values()]
+        .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name))
 }
 
 export function aggregateDesignatedCreditMetrics(
   entries: CoachDesignatedCreditReportEntry[],
 ): CoachPerformanceMetricRow[] {
-  const rows = new Map<string, CoachPerformanceMetricRow>()
+  const rows = new Map<string, CoachPerformanceMetricRow & {
+    breakdownMap: Map<string, CoachPerformanceBreakdownRow>
+  }>()
   entries.forEach((entry) => {
     const soldMinutes = Number(entry.regular_minutes || 0)
     if (soldMinutes <= 0) return
@@ -50,12 +84,55 @@ export function aggregateDesignatedCreditMetrics(
       name: entry.coach_name,
       value: 0,
       count: 0,
+      breakdown: [],
+      breakdownMap: new Map<string, CoachPerformanceBreakdownRow>(),
     }
     row.value += soldMinutes
     row.count += 1
+    const member = row.breakdownMap.get(entry.member_id) ?? {
+      id: entry.member_id,
+      name: entry.member_name,
+      value: 0,
+      count: 0,
+    }
+    member.value += soldMinutes
+    member.count += 1
+    row.breakdownMap.set(entry.member_id, member)
     rows.set(row.id, row)
   })
-  return [...rows.values()].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name))
+  return [...rows.values()]
+    .map(({ breakdownMap, ...row }) => ({
+      ...row,
+      breakdown: [...breakdownMap.values()]
+        .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name))
+}
+
+export function aggregateProductSalesMetrics(
+  groups: SalespersonGroup[],
+): CoachPerformanceMetricRow[] {
+  return groups
+    .filter((group) => group.id !== 'unassigned' && group.total > 0)
+    .map((group) => ({
+      id: group.id,
+      name: group.name,
+      value: group.total,
+      count: group.qty,
+      breakdown: [...group.details.reduce((items, detail) => {
+        const item = items.get(detail.productName) ?? {
+          id: detail.productName,
+          name: detail.productName,
+          value: 0,
+          count: 0,
+        }
+        item.value += detail.total
+        item.count += detail.qty
+        items.set(detail.productName, item)
+        return items
+      }, new Map<string, CoachPerformanceBreakdownRow>()).values()]
+        .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name)),
+    }))
 }
 
 export async function loadCoachPerformanceMetric({
@@ -71,7 +148,12 @@ export async function loadCoachPerformanceMetric({
     const records = await fetchAllPaginated<DesignatedLessonMetricRecord>(async (from, to) => {
       const { data, error } = await supabase
         .from('booking_participants')
-        .select('coach_id, duration_min, coaches:coach_id(name), bookings!inner(start_at)')
+        .select(`
+          coach_id, duration_min, participant_name, member_id,
+          coaches:coach_id(name),
+          members:member_id(name, nickname),
+          bookings!inner(start_at)
+        `)
         .eq('status', 'processed')
         .eq('is_teaching', true)
         .eq('is_deleted', false)
@@ -97,12 +179,5 @@ export async function loadCoachPerformanceMetric({
   }
 
   const groups = await fetchProductSalesGroups({ startDate, endDate })
-  return groups
-    .filter((group) => group.id !== 'unassigned' && group.total > 0)
-    .map((group) => ({
-      id: group.id,
-      name: group.name,
-      value: group.total,
-      count: group.qty,
-    }))
+  return aggregateProductSalesMetrics(groups)
 }

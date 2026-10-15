@@ -77,18 +77,27 @@ export function CoachMemberRankings({
           subtitle: undefined,
           emptyText: `${periodWord}無指定單堂記錄`,
           trackId: 'dashboard_designated_lesson_ranking',
+          breakdownTitle: '學生統計',
+          breakdownUnit: '堂',
+          remainderUnit: '位',
         },
         designated_credit: {
           title: '指定售出排行',
           subtitle: '僅計購買，不含贈送',
           emptyText: `${periodWord}無指定售出記錄`,
           trackId: 'dashboard_designated_credit_ranking',
+          breakdownTitle: '會員統計',
+          breakdownUnit: '次',
+          remainderUnit: '位',
         },
         product: {
           title: '商品銷售排行',
           subtitle: undefined,
           emptyText: `${periodWord}無商品銷售記錄`,
           trackId: 'dashboard_product_salesperson_ranking',
+          breakdownTitle: '商品項目',
+          breakdownUnit: '件',
+          remainderUnit: '項',
         },
       }[coachMetric]
 
@@ -103,6 +112,63 @@ export function CoachMemberRankings({
             ? (value) => `$${value.toLocaleString()}`
             : undefined}
           countUnit={coachMetric === 'product' ? '件' : '筆'}
+          renderDetail={(item) => {
+            const row = performanceRows.find((candidate) => candidate.id === item.id)
+            if (!row || row.breakdown.length === 0) return null
+            const visibleBreakdown = row.breakdown.slice(0, 5)
+            const remaining = row.breakdown.length - visibleBreakdown.length
+            return (
+              <div>
+                <div style={{
+                  marginBottom: 8,
+                  color: designSystem.colors.text.secondary,
+                  fontSize: getFontSize('bodySmall', isMobile),
+                  fontWeight: 600,
+                }}>
+                  {config.breakdownTitle}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {visibleBreakdown.map((detail) => (
+                    <div
+                      key={detail.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        padding: '8px 10px',
+                        borderRadius: designSystem.borderRadius.sm,
+                        background: designSystem.colors.background.hover,
+                        fontSize: getFontSize('bodySmall', isMobile),
+                      }}
+                    >
+                      <span style={{ color: designSystem.colors.text.primary }}>
+                        {detail.name}
+                      </span>
+                      <span style={{
+                        flexShrink: 0,
+                        color: designSystem.colors.text.secondary,
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {detail.count} {config.breakdownUnit}・
+                        {coachMetric === 'product'
+                          ? `$${detail.value.toLocaleString()}`
+                          : formatDuration(detail.value)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {remaining > 0 && (
+                  <div style={{
+                    marginTop: 8,
+                    color: designSystem.colors.text.disabled,
+                    fontSize: getFontSize('caption', isMobile),
+                  }}>
+                    另有 {remaining} {config.remainderUnit}
+                  </div>
+                )}
+              </div>
+            )
+          }}
         />
       )
     }
