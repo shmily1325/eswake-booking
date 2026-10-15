@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useDailyStaff, type StaffMember } from '../hooks/useDailyStaff'
 import { formatStaffTimeOffBadgeLabel } from '../utils/coachTimeOff'
-import { filterTimeOffStaffDisplay, filterWorkingStaffDisplay } from '../utils/dailyStaffDisplay'
+import { filterWorkingStaffDisplay } from '../utils/dailyStaffDisplay'
 import { designSystem, styles, getResponsiveStyles } from '../styles/designSystem'
 
 interface DailyStaffDisplayProps {
@@ -52,7 +52,7 @@ export function DailyStaffDisplayContent({
   )
 
   const timeOffStaff = useMemo(
-    () => filterTimeOffStaffDisplay(allStaff.filter(s => s.timeOffRecords.length > 0)),
+    () => allStaff.filter(s => s.timeOffRecords.length > 0),
     [allStaff]
   )
 

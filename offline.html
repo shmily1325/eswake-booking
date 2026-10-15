@@ -4690,8 +4690,7 @@
             });
             var timeOffStaff = allStaff.filter(function(s) {
                 return s.timeOffRecords.length > 0
-                    && coachTimeOff_hasAnyTimeOffOnDate(s.timeOffRecords, dateStr)
-                    && !isHiddenFromTimeOffStaffDisplay(s.name);
+                    && coachTimeOff_hasAnyTimeOffOnDate(s.timeOffRecords, dateStr);
             });
             return { workingStaff: workingStaff, timeOffStaff: timeOffStaff };
         }
