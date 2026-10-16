@@ -33,6 +33,7 @@ export function ProductSalesStatistics({
 }: Props) {
   const [groups, setGroups] = useState<SalespersonGroup[]>([])
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(() => new Set())
+  const [detailDateSortOrder, setDetailDateSortOrder] = useState<'asc' | 'desc'>('asc')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
@@ -241,6 +242,9 @@ export function ProductSalesStatistics({
                       expanded={expandedGroupIds.has(group.id)}
                       showName
                       onToggle={() => toggleGroup(group.id)}
+                      dateSortOrder={detailDateSortOrder}
+                      onDateSortToggle={() => setDetailDateSortOrder((current) =>
+                        current === 'asc' ? 'desc' : 'asc')}
                     />
                   ))}
                 </div>
@@ -264,6 +268,9 @@ export function ProductSalesStatistics({
                   expanded={expandedGroupIds.has(unassignedGroup.id)}
                   showName={false}
                   onToggle={() => toggleGroup(unassignedGroup.id)}
+                  dateSortOrder={detailDateSortOrder}
+                  onDateSortToggle={() => setDetailDateSortOrder((current) =>
+                    current === 'asc' ? 'desc' : 'asc')}
                 />
               </section>
             )}
@@ -280,12 +287,16 @@ function SalespersonStatRow({
   expanded,
   showName,
   onToggle,
+  dateSortOrder,
+  onDateSortToggle,
 }: {
   group: SalespersonGroup
   isMobile: boolean
   expanded: boolean
   showName: boolean
   onToggle: () => void
+  dateSortOrder: 'asc' | 'desc'
+  onDateSortToggle: () => void
 }) {
   return (
     <div style={{
@@ -368,9 +379,12 @@ function SalespersonStatRow({
           }}>
             <thead>
               <tr>
-                {['結帳日', '訂單／客人', '商品', '件數', '金額'].map((label) => (
+                {['結帳日', '訂單／客人', '商品', '件數', '金額'].map((label, index) => (
                   <th
                     key={label}
+                    aria-sort={index === 0
+                      ? (dateSortOrder === 'asc' ? 'ascending' : 'descending')
+                      : undefined}
                     style={{
                       padding: 8,
                       textAlign: label === '件數' || label === '金額' ? 'right' : 'left',
@@ -379,13 +393,35 @@ function SalespersonStatRow({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {label}
+                    {index === 0 ? (
+                      <button
+                        type="button"
+                        data-track="product_sales_date_sort"
+                        onClick={onDateSortToggle}
+                        aria-label={`${label}，目前${dateSortOrder === 'asc' ? '由早到晚' : '由晚到早'}，點擊切換排序`}
+                        style={{
+                          padding: 0,
+                          border: 0,
+                          background: 'transparent',
+                          color: 'inherit',
+                          font: 'inherit',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {label} {dateSortOrder === 'asc' ? '↑' : '↓'}
+                      </button>
+                    ) : label}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {group.details.map((detail) => (
+              {[...group.details]
+                .sort((a, b) => {
+                  const comparison = a.date.localeCompare(b.date)
+                  return dateSortOrder === 'asc' ? comparison : -comparison
+                })
+                .map((detail) => (
                 <tr key={detail.id}>
                   <td style={{ padding: 8, whiteSpace: 'nowrap' }}>{detail.date}</td>
                   <td style={{ padding: 8 }}>
@@ -400,7 +436,7 @@ function SalespersonStatRow({
                     ${detail.total.toLocaleString()}
                   </td>
                 </tr>
-              ))}
+                ))}
             </tbody>
           </table>
         </div>

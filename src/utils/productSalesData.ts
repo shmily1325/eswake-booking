@@ -95,7 +95,7 @@ export function buildSalespersonGroups(
   return [...groups.values()]
     .map((group) => ({
       ...group,
-      details: group.details.sort((a, b) => b.date.localeCompare(a.date)),
+      details: group.details.sort((a, b) => a.date.localeCompare(b.date)),
     }))
     .sort((a, b) => b.total - a.total || b.qty - a.qty || a.name.localeCompare(b.name))
 }

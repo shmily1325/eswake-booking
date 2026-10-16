@@ -152,7 +152,7 @@ export function buildDesignatedLessonGroups(
   return [...groups.values()]
     .map((group) => ({
       ...group,
-      details: group.details.sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id),
+      details: group.details.sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id),
     }))
     .sort((a, b) => b.minutes - a.minutes || a.coachName.localeCompare(b.coachName))
 }
@@ -183,7 +183,7 @@ export function buildDesignatedCreditGroups(
     .map((group) => ({
       ...group,
       details: group.details.sort((a, b) =>
-        b.occurred_at.localeCompare(a.occurred_at) || b.id - a.id),
+        a.occurred_at.localeCompare(b.occurred_at) || a.id - b.id),
     }))
     .sort((a, b) => b.soldMinutes - a.soldMinutes || a.coachName.localeCompare(b.coachName))
 }
@@ -695,6 +695,7 @@ function PerformanceGroupList({
   groups: PerformanceListGroup[]
 }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
+  const [dateSortOrder, setDateSortOrder] = useState<'asc' | 'desc'>('asc')
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: designSystem.spacing.md }}>
       {groups.map((group) => {
@@ -758,9 +759,12 @@ function PerformanceGroupList({
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: getFontSize('bodySmall', isMobile) }}>
                   <thead>
                     <tr>
-                      {group.headers.map((header) => (
+                      {group.headers.map((header, headerIndex) => (
                         <th
                           key={header}
+                          aria-sort={headerIndex === 0
+                            ? (dateSortOrder === 'asc' ? 'ascending' : 'descending')
+                            : undefined}
                           style={{
                             padding: 8,
                             textAlign: 'left',
@@ -770,13 +774,35 @@ function PerformanceGroupList({
                             borderBottom: `1px solid ${designSystem.colors.border.light}`,
                           }}
                         >
-                          {header}
+                          {headerIndex === 0 ? (
+                            <button
+                              type="button"
+                              data-track="performance_ledger_date_sort"
+                              onClick={() => setDateSortOrder((current) => current === 'asc' ? 'desc' : 'asc')}
+                              aria-label={`${header}，目前${dateSortOrder === 'asc' ? '由早到晚' : '由晚到早'}，點擊切換排序`}
+                              style={{
+                                padding: 0,
+                                border: 0,
+                                background: 'transparent',
+                                color: 'inherit',
+                                font: 'inherit',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {header} {dateSortOrder === 'asc' ? '↑' : '↓'}
+                            </button>
+                          ) : header}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {group.rows.map((row, rowIndex) => (
+                    {[...group.rows]
+                      .sort((a, b) => {
+                        const comparison = a[0].localeCompare(b[0])
+                        return dateSortOrder === 'asc' ? comparison : -comparison
+                      })
+                      .map((row, rowIndex) => (
                       <tr key={`${group.id}-${rowIndex}`}>
                         {row.map((cell, cellIndex) => (
                           <td
@@ -793,7 +819,7 @@ function PerformanceGroupList({
                           </td>
                         ))}
                       </tr>
-                    ))}
+                      ))}
                   </tbody>
                 </table>
               </div>

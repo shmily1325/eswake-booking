@@ -114,6 +114,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
   const [allCoachStats, setAllCoachStats] = useState<CoachStats[]>([]) // 完整列表
   const [coachStats, setCoachStats] = useState<CoachStats[]>([]) // 顯示用的過濾列表
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null)
+  const [detailDateSortOrder, setDetailDateSortOrder] = useState<'asc' | 'desc'>('asc')
   const [performanceRows, setPerformanceRows] = useState<CoachLedgerMetricRows>({
     designated_lesson: [],
     designated_credit: [],
@@ -900,7 +901,27 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: getFontSize('bodySmall', isMobile) }}>
                       <thead>
                         <tr style={{ background: designSystem.colors.background.hover }}>
-                          <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.light}`, fontWeight: '600', color: designSystem.colors.text.secondary }}>日期時間</th>
+                          <th
+                            aria-sort={detailDateSortOrder === 'asc' ? 'ascending' : 'descending'}
+                            style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.light}`, fontWeight: '600', color: designSystem.colors.text.secondary }}
+                          >
+                            <button
+                              type="button"
+                              data-track="coach_ledger_date_sort"
+                              onClick={() => setDetailDateSortOrder((current) => current === 'asc' ? 'desc' : 'asc')}
+                              aria-label={`日期時間，目前${detailDateSortOrder === 'asc' ? '由早到晚' : '由晚到早'}，點擊切換排序`}
+                              style={{
+                                padding: 0,
+                                border: 0,
+                                background: 'transparent',
+                                color: 'inherit',
+                                font: 'inherit',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              日期時間 {detailDateSortOrder === 'asc' ? '↑' : '↓'}
+                            </button>
+                          </th>
                           <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.light}`, fontWeight: '600', color: designSystem.colors.text.secondary }}>船隻</th>
                           <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${designSystem.colors.border.light}`, fontWeight: '600', color: designSystem.colors.text.secondary }}>學員</th>
                           <th style={{ padding: '10px', textAlign: 'center', borderBottom: `1px solid ${designSystem.colors.border.light}`, fontWeight: '600', color: designSystem.colors.text.secondary }}>教學</th>
@@ -908,7 +929,12 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                         </tr>
                       </thead>
                       <tbody>
-                        {stat.details.map((detail, idx) => (
+                        {[...stat.details]
+                          .sort((a, b) => {
+                            const comparison = `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`)
+                            return detailDateSortOrder === 'asc' ? comparison : -comparison
+                          })
+                          .map((detail, idx) => (
                           <tr key={`${detail.bookingId}-${idx}`} style={{ borderBottom: `1px solid ${designSystem.colors.border.light}` }}>
                             <td style={{ padding: '10px', whiteSpace: 'nowrap' }}>
                               <div style={{ fontWeight: '600', color: designSystem.colors.text.primary }}>{detail.date}</div>
@@ -958,7 +984,7 @@ export function StatisticsTab({ isMobile, autoFilterCoachId }: StatisticsTabProp
                               )}
                             </td>
                           </tr>
-                        ))}
+                          ))}
                       </tbody>
                     </table>
                   </div>
