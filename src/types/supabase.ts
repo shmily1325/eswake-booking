@@ -1592,6 +1592,183 @@ export type Database = {
           },
         ]
       }
+      voucher_package_purchases: {
+        Row: {
+          id: string
+          request_key: string
+          member_id: string
+          voucher_year: number
+          category: string
+          package_hours: number
+          book_count: number
+          minutes_per_book: number
+          price_per_book: number
+          total_minutes: number
+          total_price: number
+          balance_deduction: number
+          board_years_granted: number
+          board_years_applied: number
+          competition_uses_granted: number
+          competition_uses_used: number
+          voucher_transaction_id: number | null
+          balance_transaction_id: number | null
+          voucher_lot_allocations: Json
+          transaction_date: string
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          request_key: string
+          member_id: string
+          voucher_year: number
+          category: string
+          package_hours: number
+          book_count: number
+          minutes_per_book: number
+          price_per_book: number
+          total_minutes: number
+          total_price: number
+          balance_deduction?: number
+          board_years_granted?: number
+          board_years_applied?: number
+          competition_uses_granted?: number
+          competition_uses_used?: number
+          voucher_transaction_id?: number | null
+          balance_transaction_id?: number | null
+          voucher_lot_allocations?: Json
+          transaction_date: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          request_key?: string
+          member_id?: string
+          voucher_year?: number
+          category?: string
+          package_hours?: number
+          book_count?: number
+          minutes_per_book?: number
+          price_per_book?: number
+          total_minutes?: number
+          total_price?: number
+          balance_deduction?: number
+          board_years_granted?: number
+          board_years_applied?: number
+          competition_uses_granted?: number
+          competition_uses_used?: number
+          voucher_transaction_id?: number | null
+          balance_transaction_id?: number | null
+          voucher_lot_allocations?: Json
+          transaction_date?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      voucher_package_competition_redemptions: {
+        Row: {
+          id: string
+          request_key: string
+          member_id: string
+          voucher_year: number
+          category: string
+          books_redeemed: number
+          minutes_added: number
+          note: string
+          transaction_id: number | null
+          purchase_allocations: Json
+          voucher_lot_allocations: Json
+          redeemed_by: string | null
+          redeemed_at: string
+        }
+        Insert: {
+          id?: string
+          request_key: string
+          member_id: string
+          voucher_year: number
+          category: string
+          books_redeemed: number
+          minutes_added: number
+          note: string
+          transaction_id?: number | null
+          purchase_allocations?: Json
+          voucher_lot_allocations?: Json
+          redeemed_by?: string | null
+          redeemed_at?: string
+        }
+        Update: {
+          id?: string
+          request_key?: string
+          member_id?: string
+          voucher_year?: number
+          category?: string
+          books_redeemed?: number
+          minutes_added?: number
+          note?: string
+          transaction_id?: number | null
+          purchase_allocations?: Json
+          voucher_lot_allocations?: Json
+          redeemed_by?: string | null
+          redeemed_at?: string
+        }
+        Relationships: []
+      }
+      voucher_package_board_applications: {
+        Row: {
+          id: string
+          request_key: string
+          member_id: string
+          voucher_year: number
+          category: string
+          board_storage_id: number | null
+          slot_number: number
+          years_applied: number
+          old_expires_at: string
+          new_expires_at: string
+          purchase_allocations: Json
+          note: string | null
+          applied_by: string | null
+          applied_at: string
+        }
+        Insert: {
+          id?: string
+          request_key: string
+          member_id: string
+          voucher_year: number
+          category: string
+          board_storage_id?: number | null
+          slot_number: number
+          years_applied: number
+          old_expires_at: string
+          new_expires_at: string
+          purchase_allocations?: Json
+          note?: string | null
+          applied_by?: string | null
+          applied_at?: string
+        }
+        Update: {
+          id?: string
+          request_key?: string
+          member_id?: string
+          voucher_year?: number
+          category?: string
+          board_storage_id?: number | null
+          slot_number?: number
+          years_applied?: number
+          old_expires_at?: string
+          new_expires_at?: string
+          purchase_allocations?: Json
+          note?: string | null
+          applied_by?: string | null
+          applied_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           adjust_type: string | null
@@ -1618,6 +1795,7 @@ export type Database = {
           vip_voucher_amount_after: number | null
           voucher_year: number | null
           lot_allocations: Json | null
+          voucher_package_managed: boolean
         }
         Insert: {
           adjust_type?: string | null
@@ -1644,6 +1822,7 @@ export type Database = {
           vip_voucher_amount_after?: number | null
           voucher_year?: number | null
           lot_allocations?: Json | null
+          voucher_package_managed?: boolean
         }
         Update: {
           adjust_type?: string | null
@@ -1670,6 +1849,7 @@ export type Database = {
           vip_voucher_amount_after?: number | null
           voucher_year?: number | null
           lot_allocations?: Json | null
+          voucher_package_managed?: boolean
         }
         Relationships: [
           {
@@ -2288,6 +2468,69 @@ export type Database = {
           p_notes?: string | null
           p_transaction_date?: string | null
           p_voucher_year?: number | null
+        }
+        Returns: Json
+      }
+      create_voucher_package_purchase: {
+        Args: {
+          p_request_key: string
+          p_member_id: string
+          p_category: string
+          p_package_hours: number
+          p_book_count: number
+          p_balance_deduction?: number
+          p_notes?: string | null
+          p_transaction_date?: string | null
+        }
+        Returns: Json
+      }
+      delete_voucher_package_purchase: {
+        Args: {
+          p_purchase_id: string
+          p_member_id: string
+        }
+        Returns: Json
+      }
+      apply_voucher_package_board_years: {
+        Args: {
+          p_request_key: string
+          p_member_id: string
+          p_voucher_year: number
+          p_category: string
+          p_board_storage_id: number
+          p_years: number
+          p_note?: string | null
+        }
+        Returns: Json
+      }
+      redeem_voucher_package_competition: {
+        Args: {
+          p_request_key: string
+          p_member_id: string
+          p_voucher_year: number
+          p_category: string
+          p_note: string
+        }
+        Returns: Json
+      }
+      delete_voucher_package_competition_redemption: {
+        Args: {
+          p_redemption_id: string
+          p_member_id: string
+        }
+        Returns: Json
+      }
+      get_voucher_package_year_overview: {
+        Args: {
+          p_voucher_year: number
+        }
+        Returns: Json
+      }
+      get_member_voucher_package_detail: {
+        Args: {
+          p_member_id: string
+          p_voucher_year: number
+          p_category: string
         }
         Returns: Json
       }

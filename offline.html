@@ -1794,7 +1794,7 @@
         // 全域變數 - 使用 IndexedDB 作為資料庫
         let db = null;
         let DB_NAME = localStorage.getItem('eswake-offline-active-db') || 'eswake-offline';
-        const DB_VERSION = 6;
+        const DB_VERSION = 7;
         const BACKUP_FORMAT_VERSION = 4;
         const OFFLINE_STORE_CONFIG = {
             members: { keyPath: 'id' },
@@ -1824,6 +1824,9 @@
             shop_order_settlements: { keyPath: 'id' },
             credit_lots: { keyPath: 'id' },
             transactions: { keyPath: 'id', autoIncrement: true },
+            voucher_package_purchases: { keyPath: 'id' },
+            voucher_package_competition_redemptions: { keyPath: 'id' },
+            voucher_package_board_applications: { keyPath: 'id' },
             shop_order_no_seq: { keyPath: 'seq_date' },
             daily_announcements: { keyPath: 'id', autoIncrement: true },
             reservation_restrictions: { keyPath: 'id', autoIncrement: true },
@@ -1833,8 +1836,13 @@
             line_bindings: { keyPath: 'id', autoIncrement: true },
             backup_logs: { keyPath: 'id', autoIncrement: true }
         };
-        // v4 舊備份尚無此關聯表；缺少時以空表載入，保留既有備份相容性。
-        const OPTIONAL_BACKUP_TABLES = new Set(['reservation_restriction_coaches']);
+        // v4 舊備份尚無這些後續新增表；缺少時以空表載入，保留既有備份相容性。
+        const OPTIONAL_BACKUP_TABLES = new Set([
+            'reservation_restriction_coaches',
+            'voucher_package_purchases',
+            'voucher_package_competition_redemptions',
+            'voucher_package_board_applications'
+        ]);
         const REQUIRED_BACKUP_TABLES = Object.keys(OFFLINE_STORE_CONFIG)
             .filter(tableName => !OPTIONAL_BACKUP_TABLES.has(tableName));
         // 順序、標題與圖示直接對齊線上 HomePage；只替換離線點擊行為。

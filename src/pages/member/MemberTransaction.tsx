@@ -30,8 +30,20 @@ import {
   CreditLotBalanceDisplay,
   type CreditLotRow,
 } from '../../components/CreditLotBalanceDisplay'
+import { VoucherPackageManagementDialog } from '../../components/VoucherPackageManagementDialog'
+import type { VoucherPackageCategory } from '../../lib/voucherPackages'
 
 type StorageView = 'ledger' | 'year'
+
+interface PackageManagementTarget {
+  member: {
+    id: string
+    name: string
+    nickname: string | null
+  }
+  voucherYear: number
+  category: VoucherPackageCategory
+}
 
 const pageBg = designSystem.colors.background.main
 const cardBorder = `1px solid ${designSystem.colors.border.light}`
@@ -64,6 +76,8 @@ export function MemberTransaction() {
   const [dialogInitialTab, setDialogInitialTab] = useState<'transaction' | 'history'>('transaction')
   const [dialogInitialCategory, setDialogInitialCategory] = useState<string | undefined>()
   const [dialogInitialVoucherYear, setDialogInitialVoucherYear] = useState<number | null | undefined>()
+  const [packageManagementTarget, setPackageManagementTarget] =
+    useState<PackageManagementTarget | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
   const [sortBy, setSortBy] = useState<'updatedAt' | 'lastLiffLogin'>('updatedAt')
@@ -621,6 +635,17 @@ export function MemberTransaction() {
         <div style={{ marginTop: designSystem.spacing.md }}>
           <VoucherYearBalancePanel
             onOpenMember={openMemberFromYearBalance}
+            onOpenPackage={({ member, voucherYear, category }) => {
+              setPackageManagementTarget({
+                member: {
+                  id: member.id,
+                  name: member.name || member.nickname || '—',
+                  nickname: member.nickname,
+                },
+                voucherYear,
+                category,
+              })
+            }}
             refreshKey={yearPanelRefreshKey}
           />
         </div>
@@ -950,8 +975,32 @@ export function MemberTransaction() {
             setDialogInitialVoucherYear(undefined)
           }}
           onSuccess={handleTransactionSuccess}
+          onPackageCreated={(target) => {
+            if (target.packageHours !== 20) return
+            const packageMember = members.find((item) => item.id === target.memberId)
+            setPackageManagementTarget({
+              member: {
+                id: target.memberId,
+                name: packageMember?.name || selectedMember.name,
+                nickname: packageMember?.nickname ?? selectedMember.nickname,
+              },
+              voucherYear: target.voucherYear,
+              category: target.category,
+            })
+          }}
         />
       )}
+
+      {packageManagementTarget ? (
+        <VoucherPackageManagementDialog
+          open
+          member={packageManagementTarget.member}
+          voucherYear={packageManagementTarget.voucherYear}
+          category={packageManagementTarget.category}
+          onClose={() => setPackageManagementTarget(null)}
+          onChanged={handleTransactionSuccess}
+        />
+      ) : null}
 
     </div>
   )

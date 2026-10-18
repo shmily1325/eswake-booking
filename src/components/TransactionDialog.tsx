@@ -14,6 +14,16 @@ import type { Member } from '../types/booking'
 import { designSystem, getBadgeStyle, getBookingChoiceStyle, getButtonStyle, getFilterChipStyle, getFontSize, getInputStyle, getLabelStyle } from '../styles/designSystem'
 import { ToastContainer, useToast } from './ui'
 import { CreditLotBalanceDisplay } from './CreditLotBalanceDisplay'
+import {
+  createVoucherPackagePurchase,
+  createVoucherPackageRequestKey,
+  getVoucherPackageDefinition,
+  isVoucherPackageCategory,
+  VOUCHER_PACKAGE_CATEGORY_LABEL,
+  VOUCHER_PACKAGE_YEAR,
+  type VoucherPackageCategory,
+  type VoucherPackageHours,
+} from '../lib/voucherPackages'
 
 interface TransactionDialogProps {
   open: boolean
@@ -27,6 +37,12 @@ interface TransactionDialogProps {
   initialCategoryFilter?: string
   /** 只顯示該入帳年的流水（扣款／未標年不會出現） */
   initialVoucherYearFilter?: number | null
+  onPackageCreated?: (target: {
+    memberId: string
+    voucherYear: number
+    category: VoucherPackageCategory
+    packageHours: VoucherPackageHours
+  }) => void
 }
 
 interface Transaction {
@@ -47,6 +63,7 @@ interface Transaction {
   boat_voucher_g23_minutes_after: number | null
   boat_voucher_g21_panther_minutes_after: number | null
   gift_boat_hours_after: number | null
+  voucher_package_managed: boolean
 }
 
 // 六個項目的配置
@@ -65,6 +82,19 @@ const isEditableCategory = (category: string) =>
 
 function isValidVoucherYear(year: number | null): boolean {
   return year == null || (Number.isInteger(year) && year >= 2020 && year <= 2100)
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message
+  }
+  return String(error || '未知錯誤')
 }
 
 function VoucherYearPicker({
@@ -175,6 +205,7 @@ export function TransactionDialog({
   initialTab = 'transaction',
   initialCategoryFilter,
   initialVoucherYearFilter,
+  onPackageCreated,
 }: TransactionDialogProps) {
   const { isMobile } = useResponsive()
   const toast = useToast()
@@ -189,7 +220,10 @@ export function TransactionDialog({
   const [description, setDescription] = useState('')
   const [notes, setNotes] = useState('')
   const [transactionDate, setTransactionDate] = useState(() => getLocalDateString())
-  const [voucherYear, setVoucherYear] = useState<number | null>(() => calendarYear)
+  const [voucherYear, setVoucherYear] = useState<number | null>(() => VOUCHER_PACKAGE_YEAR)
+  const [packageHours, setPackageHours] = useState<VoucherPackageHours | null>(null)
+  const [packageBookCount, setPackageBookCount] = useState('1')
+  const [packageBalanceDeduction, setPackageBalanceDeduction] = useState('')
   /** null = 入帳年「無」 */
   const [creditLots, setCreditLots] = useState<
     Array<{ category: string; voucher_year: number; remaining: number }>
@@ -214,12 +248,28 @@ export function TransactionDialog({
   const [editDescription, setEditDescription] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [editTransactionDate, setEditTransactionDate] = useState('')
-  const [editVoucherYear, setEditVoucherYear] = useState<number | null>(2026)
+  const [editVoucherYear, setEditVoucherYear] = useState<number | null>(
+    VOUCHER_PACKAGE_YEAR,
+  )
   const [savingEdit, setSavingEdit] = useState(false)
 
   const inputStyle = getInputStyle(isMobile)
   const showVoucherYearField =
     adjustType === 'increase' && isYearTrackedCategory(category)
+  const showPackageChoices =
+    adjustType === 'increase' && isVoucherPackageCategory(category)
+  const selectedPackageCategory = isVoucherPackageCategory(category)
+    ? category
+    : null
+  const selectedPackageDefinition =
+    selectedPackageCategory && packageHours
+      ? getVoucherPackageDefinition(selectedPackageCategory, packageHours)
+      : null
+  const parsedPackageBookCount = Number(packageBookCount)
+  const packageTotalPrice =
+    selectedPackageDefinition && Number.isInteger(parsedPackageBookCount)
+      ? selectedPackageDefinition.pricePerBook * parsedPackageBookCount
+      : 0
   const showEditVoucherYearField =
     editAdjustType === 'increase' && isYearTrackedCategory(editCategory)
 
@@ -246,7 +296,10 @@ export function TransactionDialog({
     setDescription('')
     setNotes('')
     setTransactionDate(getLocalDateString())
-    setVoucherYear(calendarYear)
+    setVoucherYear(VOUCHER_PACKAGE_YEAR)
+    setPackageHours(null)
+    setPackageBookCount('1')
+    setPackageBalanceDeduction('')
   }
 
   // 當對話框開啟時，自動填入預約資訊，並讀取分年剩餘
@@ -264,7 +317,7 @@ export function TransactionDialog({
       if (initialTab === 'history' && initialVoucherYearFilter != null) {
         setSelectedMonth('')
       }
-      setVoucherYear(calendarYear)
+      setVoucherYear(VOUCHER_PACKAGE_YEAR)
       void loadCreditLots()
     }
   }, [open, defaultDescription, defaultTransactionDate, member.id, initialTab, initialCategoryFilter, initialVoucherYearFilter, calendarYear])
@@ -275,7 +328,7 @@ export function TransactionDialog({
     try {
       let query = supabase
         .from('transactions')
-        .select('id, created_at, transaction_date, transaction_type, category, adjust_type, amount, minutes, description, notes, voucher_year, balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after')
+        .select('id, created_at, transaction_date, transaction_type, category, adjust_type, amount, minutes, description, notes, voucher_year, balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after, voucher_package_managed')
         .eq('member_id', member.id)
         .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })
@@ -293,7 +346,7 @@ export function TransactionDialog({
 
       if (error) throw error
       setTransactions(data || [])
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('加載交易記錄失敗:', error)
       toast.error('加載交易記錄失敗')
     } finally {
@@ -395,7 +448,7 @@ export function TransactionDialog({
       setEditValue('')
       setEditDescription('')
       setEditNotes('')
-      setEditVoucherYear(calendarYear)
+      setEditVoucherYear(VOUCHER_PACKAGE_YEAR)
       toast.success('已更新')
       if (result.lots_auto_year != null) {
         toast.warning(
@@ -403,9 +456,9 @@ export function TransactionDialog({
           8000,
         )
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('更新失敗:', error)
-      const msg = `更新失敗：${error?.message || error || '未知錯誤'}`
+      const msg = `更新失敗：${getErrorMessage(error)}`
       toast.error(msg)
       // 先前 toast 沒掛畫面，錯誤會像「沒反應」；alert 確保看得到
       window.alert(msg)
@@ -435,9 +488,9 @@ export function TransactionDialog({
           8000,
         )
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('刪除失敗:', error)
-      toast.error(`刪除失敗：${error.message}`)
+      toast.error(`刪除失敗：${getErrorMessage(error)}`)
     }
   }
 
@@ -448,7 +501,7 @@ export function TransactionDialog({
     setEditValue('')
     setEditDescription('')
     setEditNotes('')
-    setEditVoucherYear(calendarYear)
+    setEditVoucherYear(VOUCHER_PACKAGE_YEAR)
   }
 
 
@@ -469,6 +522,64 @@ export function TransactionDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (packageHours && selectedPackageCategory && selectedPackageDefinition) {
+      const bookCount = Number(packageBookCount)
+      const balanceDeduction = packageBalanceDeduction
+        ? Number(packageBalanceDeduction)
+        : 0
+      if (!Number.isInteger(bookCount) || bookCount <= 0 || bookCount > 100) {
+        toast.warning('請輸入有效的本數')
+        return
+      }
+      if (
+        !Number.isFinite(balanceDeduction) ||
+        balanceDeduction < 0 ||
+        balanceDeduction > selectedPackageDefinition.pricePerBook * bookCount
+      ) {
+        toast.warning('扣儲值金額不可超過方案總價')
+        return
+      }
+      if (!transactionDate) {
+        toast.warning('請選擇交易日期')
+        return
+      }
+
+      setLoading(true)
+      try {
+        await createVoucherPackagePurchase({
+          requestKey: createVoucherPackageRequestKey(),
+          memberId: member.id,
+          category: selectedPackageCategory,
+          packageHours,
+          bookCount,
+          balanceDeduction,
+          notes: notes.trim() || null,
+          transactionDate: normalizeDate(transactionDate) || transactionDate,
+        })
+        toast.success(
+          `${VOUCHER_PACKAGE_CATEGORY_LABEL[selectedPackageCategory]} ${packageHours}小時方案 × ${bookCount}本已入帳`,
+        )
+        const target = {
+          memberId: member.id,
+          voucherYear: VOUCHER_PACKAGE_YEAR,
+          category: selectedPackageCategory,
+          packageHours,
+        }
+        resetForm()
+        onSuccess()
+        onClose()
+        onPackageCreated?.(target)
+      } catch (error: unknown) {
+        console.error('方案入帳失敗:', error)
+        toast.error(
+          `方案入帳失敗：${error instanceof Error ? error.message : '未知錯誤'}`,
+        )
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
     
     const numValue = parseFloat(value)
     if (isNaN(numValue) || numValue < 0) {
@@ -543,9 +654,9 @@ export function TransactionDialog({
       resetForm()
       onSuccess()
       onClose()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('記帳失敗:', error)
-      toast.error(`記帳失敗：${error.message}`)
+      toast.error(`記帳失敗：${getErrorMessage(error)}`)
     } finally {
       setLoading(false)
     }
@@ -734,7 +845,10 @@ export function TransactionDialog({
                 </label>
                 <select
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  onChange={(e) => {
+                    setCategory(e.target.value)
+                    setPackageHours(null)
+                  }}
                   style={inputStyle}
                   required
                 >
@@ -768,7 +882,10 @@ export function TransactionDialog({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setAdjustType('decrease')}
+                    onClick={() => {
+                      setAdjustType('decrease')
+                      setPackageHours(null)
+                    }}
                     style={{
                       ...getBookingChoiceStyle(adjustType === 'decrease'),
                       width: '100%',
@@ -783,8 +900,175 @@ export function TransactionDialog({
                 </div>
               </div>
 
+              {showPackageChoices && (
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
+                    入帳方式
+                  </label>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile
+                        ? '1fr'
+                        : 'repeat(3, minmax(0, 1fr))',
+                      gap: designSystem.spacing.sm,
+                    }}
+                  >
+                    {([
+                      { hours: null, label: '手動輸入' },
+                      { hours: 10, label: '2027 10小時' },
+                      { hours: 20, label: '2027 20小時' },
+                    ] as const).map((option) => (
+                      <button
+                        key={option.label}
+                        type="button"
+                        aria-pressed={packageHours === option.hours}
+                        onClick={() => {
+                          setPackageHours(option.hours)
+                          if (option.hours) {
+                            setVoucherYear(VOUCHER_PACKAGE_YEAR)
+                            setPackageBookCount('1')
+                            setPackageBalanceDeduction('')
+                          }
+                        }}
+                        style={{
+                          ...getBookingChoiceStyle(packageHours === option.hours),
+                          minHeight: 44,
+                          padding: '10px 12px',
+                          fontSize: getFontSize('button', isMobile),
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {packageHours && selectedPackageCategory && selectedPackageDefinition ? (
+                <>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
+                      本數
+                    </label>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, minmax(44px, 64px)) minmax(72px, 1fr) auto',
+                        gap: designSystem.spacing.sm,
+                        alignItems: 'center',
+                      }}
+                    >
+                      {[1, 2, 3].map((count) => (
+                        <button
+                          key={count}
+                          type="button"
+                          aria-pressed={packageBookCount === String(count)}
+                          onClick={() => setPackageBookCount(String(count))}
+                          style={{
+                            ...getBookingChoiceStyle(packageBookCount === String(count)),
+                            minHeight: 44,
+                            padding: '10px',
+                            fontSize: getFontSize('body', isMobile),
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {count}
+                        </button>
+                      ))}
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        aria-label="自訂方案本數"
+                        value={
+                          ['1', '2', '3'].includes(packageBookCount)
+                            ? ''
+                            : packageBookCount
+                        }
+                        onChange={(event) => {
+                          setPackageBookCount(
+                            event.target.value.replace(/\D/g, '').slice(0, 3),
+                          )
+                        }}
+                        placeholder=""
+                        style={{
+                          ...getInputStyle(isMobile),
+                          minHeight: 44,
+                          padding: '10px 12px',
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: getFontSize('body', isMobile),
+                          color: designSystem.colors.text.secondary,
+                        }}
+                      >
+                        本
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
+                      扣儲值
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={packageBalanceDeduction}
+                      onChange={(event) =>
+                        setPackageBalanceDeduction(
+                          event.target.value.replace(/\D/g, ''),
+                        )
+                      }
+                      placeholder="不扣請留空"
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      marginBottom: '20px',
+                      padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
+                      border: `1px solid ${designSystem.colors.border.light}`,
+                      borderRadius: designSystem.borderRadius.lg,
+                      background: designSystem.colors.background.main,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: getFontSize('body', isMobile),
+                        fontWeight: 650,
+                        color: designSystem.colors.text.primary,
+                      }}
+                    >
+                      {VOUCHER_PACKAGE_CATEGORY_LABEL[selectedPackageCategory]}{' '}
+                      {packageHours}小時 × {Number(packageBookCount) || 0}本
+                    </div>
+                    <div
+                      style={{
+                        marginTop: designSystem.spacing.xs,
+                        fontSize: getFontSize('bodySmall', isMobile),
+                        color: designSystem.colors.text.secondary,
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      {(selectedPackageDefinition.minutesPerBook * (Number(packageBookCount) || 0)).toLocaleString()}分
+                      {' · '}
+                      ${packageTotalPrice.toLocaleString()}
+                      {packageHours === 20
+                        ? ` · 置板 ${Number(packageBookCount) || 0} 年 · 賽事 ${(Number(packageBookCount) || 0) * 3} 次`
+                        : ''}
+                    </div>
+                  </div>
+                </>
+              ) : null}
+
               {/* 輸入數值 */}
-              <div style={{ marginBottom: '16px' }}>
+              {!packageHours && <div style={{ marginBottom: '16px' }}>
                 <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                   {selectedCategory?.type === 'amount' ? '金額 (元)' : '時數 (分鐘)'} *
                 </label>
@@ -800,17 +1084,17 @@ export function TransactionDialog({
                   style={inputStyle}
                   required
                 />
-              </div>
+              </div>}
 
               {/* 入帳年：僅 VIP／G23／G21 增加時 */}
-              {showVoucherYearField && (
+              {showVoucherYearField && !packageHours && (
                 <div style={{ marginBottom: '16px' }}>
                   <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                     入帳年
                   </label>
                   <VoucherYearPicker
                     value={voucherYear}
-                    currentYear={calendarYear}
+                    currentYear={VOUCHER_PACKAGE_YEAR}
                     onChange={setVoucherYear}
                     isMobile={isMobile}
                     noneDisabled={creditLots.some((lot) => lot.category === category)}
@@ -848,7 +1132,7 @@ export function TransactionDialog({
               </div>
 
               {/* 說明（必填） */}
-              <div style={{ marginBottom: '16px' }}>
+              {!packageHours && <div style={{ marginBottom: '16px' }}>
                 <label style={{ ...getLabelStyle(isMobile), fontWeight: '500' }}>
                   說明 *
                 </label>
@@ -860,7 +1144,7 @@ export function TransactionDialog({
                   style={inputStyle}
                   required
                 />
-              </div>
+              </div>}
 
               {/* 備註（選填） */}
               <div style={{ marginBottom: '20px' }}>
@@ -881,7 +1165,7 @@ export function TransactionDialog({
               </div>
 
               {/* 確認前預覽 */}
-              {value && parseFloat(value) > 0 && (() => {
+              {!packageHours && value && parseFloat(value) > 0 && (() => {
                 const numValue = parseFloat(value)
                 const isAmount = selectedCategory?.type === 'amount'
                 const currentValue = (() => {
@@ -940,7 +1224,11 @@ export function TransactionDialog({
                     cursor: loading ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  {loading ? '處理中...' : '確認記帳'}
+                  {loading
+                    ? '處理中...'
+                    : packageHours
+                      ? '確認方案入帳'
+                      : '確認記帳'}
                 </button>
               )}
             </form>
@@ -977,7 +1265,11 @@ export function TransactionDialog({
                 cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
-              {loading ? '處理中...' : '確認記帳'}
+              {loading
+                ? '處理中...'
+                : packageHours
+                  ? '確認方案入帳'
+                  : '確認記帳'}
             </button>
           </div>
         )}
@@ -1238,7 +1530,9 @@ export function TransactionDialog({
                   const categoryConfig = CATEGORIES.find(c => c.value === tx.category)
                   const isIncrease = tx.adjust_type === 'increase'
                   const isEditing = editingTransaction?.id === tx.id
-                  const canEditFields = isEditableCategory(tx.category)
+                  const isManagedPackageTransaction = tx.voucher_package_managed === true
+                  const canEditFields =
+                    isEditableCategory(tx.category) && !isManagedPackageTransaction
                   
                   return (
                     <div
@@ -1313,7 +1607,9 @@ export function TransactionDialog({
                                   fontWeight: 600,
                                   color: designSystem.colors.text.primary,
                                 }}>
-                                  方案記錄（無金額）
+                                  {isManagedPackageTransaction
+                                    ? '方案自動流水'
+                                    : '方案記錄（無金額）'}
                                 </div>
                                 <div style={{
                                   marginBottom: '12px',
@@ -1327,7 +1623,9 @@ export function TransactionDialog({
                                   fontSize: getFontSize('caption', isMobile),
                                   color: designSystem.colors.text.disabled,
                                 }}>
-                                  此筆只能刪除，不可改金額或類別。
+                                  {isManagedPackageTransaction
+                                    ? '請至年度餘額的方案紀錄管理或刪除。'
+                                    : '此筆只能刪除，不可改金額或類別。'}
                                 </div>
                               </>
                             ) : (
@@ -1411,7 +1709,7 @@ export function TransactionDialog({
                                 </label>
                                 <VoucherYearPicker
                                   value={editVoucherYear}
-                                  currentYear={calendarYear}
+                                  currentYear={VOUCHER_PACKAGE_YEAR}
                                   onChange={setEditVoucherYear}
                                   isMobile={isMobile}
                                   noneDisabled={creditLots.some((lot) => lot.category === editCategory)}
@@ -1487,17 +1785,19 @@ export function TransactionDialog({
                                 {savingEdit ? '儲存中…' : '儲存'}
                               </button>
                             ) : null}
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteTransaction(tx)}
-                              disabled={savingEdit}
-                              style={{
-                                ...getButtonStyle('danger', 'small', isMobile),
-                                flex: canEditFields ? undefined : 1,
-                              }}
-                            >
-                              刪除
-                            </button>
+                            {!isManagedPackageTransaction ? (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTransaction(tx)}
+                                disabled={savingEdit}
+                                style={{
+                                  ...getButtonStyle('danger', 'small', isMobile),
+                                  flex: canEditFields ? undefined : 1,
+                                }}
+                              >
+                                刪除
+                              </button>
+                            ) : null}
                             <button
                               type="button"
                               onClick={handleCancelEdit}

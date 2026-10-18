@@ -30,6 +30,9 @@ export const BACKUP_TABLES = [
   'shop_order_settlements',
   'credit_lots',
   'transactions',
+  'voucher_package_purchases',
+  'voucher_package_competition_redemptions',
+  'voucher_package_board_applications',
   'shop_order_no_seq',
   'daily_announcements',
   'reservation_restrictions',
@@ -57,4 +60,8 @@ export const JSONB_COLUMNS = new Set([
   'audit_log.changes',
   'product_variants.attributes',
   'shop_order_settlements.items_snapshot',
+  'voucher_package_purchases.voucher_lot_allocations',
+  'voucher_package_competition_redemptions.purchase_allocations',
+  'voucher_package_competition_redemptions.voucher_lot_allocations',
+  'voucher_package_board_applications.purchase_allocations',
 ])

@@ -16,6 +16,12 @@ import {
   getEmptyStateStyle,
   getFontSize,
 } from '../../styles/designSystem'
+import {
+  getVoucherPackageYearOverview,
+  VOUCHER_PACKAGE_YEAR,
+  type VoucherPackageCategory,
+  type VoucherPackageOverviewRow,
+} from '../../lib/voucherPackages'
 
 type LotCategory =
   | 'vip_voucher'
@@ -47,12 +53,18 @@ interface PersonRemaining {
   nickname: string
   name: string
   remaining: number
+  packageSummary?: VoucherPackageOverviewRow
 }
 
 type SortMode = 'remaining_desc' | 'remaining_asc'
 
 interface VoucherYearBalancePanelProps {
   onOpenMember: (member: YearBalanceMemberRef) => void
+  onOpenPackage: (target: {
+    member: YearBalanceMemberRef
+    voucherYear: number
+    category: VoucherPackageCategory
+  }) => void
   /** 變更時重新載入 lots（例如細帳成功後） */
   refreshKey?: number
 }
@@ -92,12 +104,17 @@ function formatAmount(category: LotCategory, value: number): string {
   return `${value.toLocaleString()}分`
 }
 
-export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: VoucherYearBalancePanelProps) {
+export function VoucherYearBalancePanel({
+  onOpenMember,
+  onOpenPackage,
+  refreshKey = 0,
+}: VoucherYearBalancePanelProps) {
   const { isMobile } = useResponsive()
   const [initialPreferences] = useState(loadPreferences)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lots, setLots] = useState<LotRow[]>([])
+  const [packageRows, setPackageRows] = useState<VoucherPackageOverviewRow[]>([])
   const [yearFilter, setYearFilter] = useState<number | null>(initialPreferences.year ?? null)
   const [sortMode, setSortMode] = useState<SortMode>(
     initialPreferences.sortMode === 'remaining_asc' ? 'remaining_asc' : 'remaining_desc'
@@ -108,25 +125,33 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
     setLoading(true)
     setError(null)
     try {
-      const { data, error: qError } = await supabase
-        .from('credit_lots')
-        .select(
-          `
+      const [lotsResult, packageOverview] = await Promise.all([
+        supabase
+          .from('credit_lots')
+          .select(
+            `
           member_id,
           category,
           voucher_year,
           remaining,
           members:member_id ( id, nickname, name )
-        `
-        )
-        .order('voucher_year', { ascending: true })
+        `,
+          )
+          .order('voucher_year', { ascending: true }),
+        getVoucherPackageYearOverview(VOUCHER_PACKAGE_YEAR).catch((packageError) => {
+          console.warn('載入方案摘要失敗，保留原年度餘額畫面:', packageError)
+          return []
+        }),
+      ])
 
-      if (qError) throw qError
-      setLots((data || []) as unknown as LotRow[])
+      if (lotsResult.error) throw lotsResult.error
+      setLots((lotsResult.data || []) as unknown as LotRow[])
+      setPackageRows(packageOverview)
     } catch (err) {
       console.error('載入年度細帳失敗:', err)
       setError('載入年度細帳失敗')
       setLots([])
+      setPackageRows([])
     } finally {
       setLoading(false)
     }
@@ -137,8 +162,10 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
   }, [loadLots, refreshKey])
 
   const availableYears = useMemo(() => {
-    return [...new Set(lots.map((l) => l.voucher_year))].sort((a, b) => a - b)
-  }, [lots])
+    const years = new Set(lots.map((l) => l.voucher_year))
+    if (packageRows.length > 0) years.add(VOUCHER_PACKAGE_YEAR)
+    return [...years].sort((a, b) => a - b)
+  }, [lots, packageRows])
 
   // Default to latest year (usually 2026), like opening the current Excel tab
   useEffect(() => {
@@ -160,6 +187,8 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
 
     const q = searchTerm.trim().toLowerCase()
     const yearLots = lots.filter((l) => l.voucher_year === yearFilter)
+    const yearPackageRows =
+      yearFilter === VOUCHER_PACKAGE_YEAR ? packageRows : []
 
     return CATEGORY_ORDER.map((category) => {
       const peopleMap = new Map<string, PersonRemaining>()
@@ -184,6 +213,24 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
         })
       }
 
+      for (const packageRow of yearPackageRows) {
+        if (packageRow.category !== category) continue
+        const nickname = packageRow.display_name || packageRow.name || '—'
+        const name = packageRow.name || ''
+        if (q) {
+          const hay = `${nickname} ${name}`.toLowerCase()
+          if (!hay.includes(q)) continue
+        }
+        const existing = peopleMap.get(packageRow.member_id)
+        peopleMap.set(packageRow.member_id, {
+          memberId: packageRow.member_id,
+          nickname: existing?.nickname || nickname,
+          name: existing?.name || name,
+          remaining: existing?.remaining || 0,
+          packageSummary: packageRow,
+        })
+      }
+
       const people = [...peopleMap.values()].sort((a, b) => {
         const remainingComparison = a.remaining - b.remaining
         if (remainingComparison !== 0) {
@@ -192,9 +239,24 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
         return a.nickname.localeCompare(b.nickname, 'zh-Hant')
       })
 
-      return { category, label: CATEGORY_LABEL[category], people }
+      const books10 = people.reduce(
+        (total, person) => total + Number(person.packageSummary?.books_10h || 0),
+        0,
+      )
+      const books20 = people.reduce(
+        (total, person) => total + Number(person.packageSummary?.books_20h || 0),
+        0,
+      )
+
+      return {
+        category,
+        label: CATEGORY_LABEL[category],
+        people,
+        books10,
+        books20,
+      }
     }).filter((section) => section.people.length > 0)
-  }, [lots, yearFilter, searchTerm, sortMode])
+  }, [lots, packageRows, yearFilter, searchTerm, sortMode])
 
   const totalPeople = useMemo(() => {
     const ids = new Set<string>()
@@ -386,7 +448,12 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                     color: designSystem.colors.text.secondary,
                   }}
                 >
-                  {section.people.length} 人
+                  {section.books10 > 0 || section.books20 > 0
+                    ? [
+                        section.books10 > 0 ? `10小時 ${section.books10}本` : '',
+                        section.books20 > 0 ? `20小時 ${section.books20}本` : '',
+                      ].filter(Boolean).join(' · ')
+                    : `${section.people.length} 人`}
                 </span>
               </div>
 
@@ -431,14 +498,27 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                     data-track="voucher_year_open_member"
                     aria-label={`查看 ${person.nickname} 的${section.label}餘額明細`}
                     title="查看會員餘額明細"
-                    onClick={() =>
-                      onOpenMember({
+                    onClick={() => {
+                      const memberRef = {
                         id: person.memberId,
                         nickname: person.nickname,
                         name: person.name,
                         category: section.category,
-                      })
-                    }
+                      }
+                      if (
+                        yearFilter === VOUCHER_PACKAGE_YEAR &&
+                        person.packageSummary &&
+                        section.category !== 'vip_voucher'
+                      ) {
+                        onOpenPackage({
+                          member: memberRef,
+                          voucherYear: yearFilter,
+                          category: section.category,
+                        })
+                      } else {
+                        onOpenMember(memberRef)
+                      }
+                    }}
                     onMouseEnter={(event) => {
                       event.currentTarget.style.background = designSystem.colors.background.hover
                     }}
@@ -492,6 +572,30 @@ export function VoucherYearBalancePanel({ onOpenMember, refreshKey = 0 }: Vouche
                           }}
                         >
                           <HighlightedText text={person.name} query={searchTerm} />
+                        </div>
+                      ) : null}
+                      {person.packageSummary ? (
+                        <div
+                          style={{
+                            fontSize: getFontSize('bodySmall', isMobile),
+                            color: designSystem.colors.text.secondary,
+                            marginTop: 4,
+                          }}
+                        >
+                          {[
+                            Number(person.packageSummary.books_10h || 0) > 0
+                              ? `10小時×${Number(person.packageSummary.books_10h)}`
+                              : '',
+                            Number(person.packageSummary.books_20h || 0) > 0
+                              ? `20小時×${Number(person.packageSummary.books_20h)}`
+                              : '',
+                            Number(person.packageSummary.board_years_granted || 0) > 0
+                              ? `置板 ${Number(person.packageSummary.board_years_applied || 0)}/${Number(person.packageSummary.board_years_granted)}年`
+                              : '',
+                            Number(person.packageSummary.competition_uses_granted || 0) > 0
+                              ? `賽事 ${Number(person.packageSummary.competition_uses_used || 0)}/${Number(person.packageSummary.competition_uses_granted)}次`
+                              : '',
+                          ].filter(Boolean).join(' · ') || '歷史方案紀錄'}
                         </div>
                       ) : null}
                     </div>
