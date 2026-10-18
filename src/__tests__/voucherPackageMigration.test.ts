@@ -6,6 +6,10 @@ const migration = readFileSync(
   resolve(process.cwd(), 'migrations/258_create_2027_voucher_packages.sql'),
   'utf8',
 )
+const boardDateFixMigration = readFileSync(
+  resolve(process.cwd(), 'migrations/259_fix_voucher_package_board_note_date.sql'),
+  'utf8',
+)
 
 describe('2027 voucher package migration', () => {
   it('adds isolated structures without replacing existing accounting functions', () => {
@@ -56,5 +60,18 @@ describe('2027 voucher package migration', () => {
     expect(migration).toContain("p_category NOT IN ('boat_voucher_g23', 'boat_voucher_g21_panther')")
     expect(migration).toContain('v_minutes := v_books * 60')
     expect(migration).not.toContain("'gift_boat_hours'")
+  })
+
+  it('writes the board member-note event date as DATE', () => {
+    expect(boardDateFixMigration).toContain(
+      'CREATE OR REPLACE FUNCTION public.apply_voucher_package_board_years(',
+    )
+    expect(boardDateFixMigration).toContain('public.membership_venue_date(),')
+    expect(boardDateFixMigration).not.toContain(
+      'public.membership_venue_date()::TEXT',
+    )
+    expect(boardDateFixMigration).not.toMatch(
+      /\b(UPDATE|DELETE)\s+public\.(members|transactions|credit_lots)\b/i,
+    )
   })
 })
