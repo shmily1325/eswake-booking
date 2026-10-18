@@ -17,6 +17,9 @@ const LiffBook = lazy(() =>
 const LiffShopOrdersPreview = lazy(() =>
   import('./pages/liff/dev/LiffShopOrdersPreview').then(m => ({ default: m.LiffShopOrdersPreview })),
 )
+const WrappedDemo = lazy(() =>
+  import('./pages/liff/WrappedDemo').then(m => ({ default: m.WrappedDemo })),
+)
 
 function LiffFallbackRedirect() {
   const location = useLocation()
@@ -56,6 +59,14 @@ export default function AppLiff() {
             element={
               <Suspense fallback={<LiffBootScreen label="載入會員專區…" liffOpenUrl={memberLiffOpenUrl} />}>
                 <LiffMyBookings />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/liff/wrapped"
+            element={
+              <Suspense fallback={<LiffBootScreen label="準備年度回顧…" liffOpenUrl={memberLiffOpenUrl} />}>
+                <WrappedDemo />
               </Suspense>
             }
           />

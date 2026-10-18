@@ -51,6 +51,7 @@ import {
   type LiffCoachDesignatedEntry,
   unknownErrorMessage,
 } from './liffMemberShared'
+import { MingWrappedDemoBanner } from './WrappedDemo'
 
 function startMemberBackgroundLoads(
   member: Member,
@@ -555,6 +556,8 @@ export function LiffMyBookings() {
           }
         }}
       />
+
+      <MingWrappedDemoBanner memberId={member.id} />
 
       {/* Content（順序：預約 → 儲值 → 商品 → 會員） */}
       <div style={{ padding: '22px 18px 10px' }}>
