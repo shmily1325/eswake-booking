@@ -239,14 +239,22 @@ export function VoucherPackageManagementDialog({
   if (!open) return null
 
   const sectionStyle: React.CSSProperties = {
-    padding: isMobile ? '16px' : '18px 20px',
-    borderTop: `1px solid ${designSystem.colors.border.light}`,
+    padding: isMobile ? '20px 16px' : '22px 24px',
+    borderTop: `1px solid ${designSystem.colors.border.main}`,
   }
 
   const quietTextStyle: React.CSSProperties = {
     fontSize: getFontSize('bodySmall', isMobile),
     color: designSystem.colors.text.secondary,
     lineHeight: 1.55,
+  }
+
+  const sectionTitleStyle: React.CSSProperties = {
+    margin: 0,
+    fontSize: getFontSize('h3', isMobile),
+    fontWeight: 700,
+    letterSpacing: '-0.01em',
+    color: designSystem.colors.text.primary,
   }
 
   return (
@@ -274,17 +282,18 @@ export function VoucherPackageManagementDialog({
           borderRadius: isMobile
             ? `${designSystem.borderRadius.lg} ${designSystem.borderRadius.lg} 0 0`
             : designSystem.borderRadius.lg,
-          border: `1px solid ${designSystem.colors.border.light}`,
+          border: `1px solid ${designSystem.colors.border.main}`,
           boxShadow: designSystem.shadows.lg,
         }}
       >
         <div
           style={{
-            padding: isMobile ? '16px' : '20px',
+            padding: isMobile ? '18px 16px' : '22px 24px',
             display: 'flex',
             alignItems: 'flex-start',
             justifyContent: 'space-between',
             gap: designSystem.spacing.md,
+            borderBottom: `1px solid ${designSystem.colors.border.main}`,
           }}
         >
           <div>
@@ -307,12 +316,16 @@ export function VoucherPackageManagementDialog({
             aria-label="關閉"
             onClick={onClose}
             style={{
-              border: 'none',
-              background: 'transparent',
+              width: 38,
+              height: 38,
+              border: `1px solid ${designSystem.colors.border.light}`,
+              borderRadius: designSystem.borderRadius.full,
+              background: designSystem.colors.background.main,
               color: designSystem.colors.text.secondary,
               fontSize: getFontSize('h2', isMobile),
               cursor: 'pointer',
-              padding: '0 8px',
+              padding: 0,
+              lineHeight: 1,
             }}
           >
             ×
@@ -328,17 +341,23 @@ export function VoucherPackageManagementDialog({
             <div style={getEmptyStateStyle(isMobile)}>目前沒有方案紀錄</div>
           ) : (
             <>
-              <div style={sectionStyle}>
-                <h3
+              <div
+                style={{
+                  ...sectionStyle,
+                  borderTop: 'none',
+                  background: designSystem.colors.background.main,
+                }}
+              >
+                <h3 style={{ ...sectionTitleStyle, marginBottom: 10 }}>
+                  方案權益
+                </h3>
+                <div
                   style={{
-                    margin: '0 0 8px',
-                    fontSize: getFontSize('h3', isMobile),
+                    fontSize: getFontSize('bodyLarge', isMobile),
+                    fontWeight: 650,
                     color: designSystem.colors.text.primary,
                   }}
                 >
-                  方案權益
-                </h3>
-                <div style={quietTextStyle}>
                   {detail.purchases.length === 0
                     ? '已無有效方案，以下保留已使用紀錄。'
                     : (
@@ -350,10 +369,42 @@ export function VoucherPackageManagementDialog({
                     )}
                 </div>
                 {summary.books20 > 0 ? (
-                  <div style={{ ...quietTextStyle, marginTop: 4 }}>
-                    置板 {summary.boardApplied}/{summary.boardGranted} 年
-                    {' · '}
-                    賽事 {summary.competitionUsed}/{summary.competitionGranted} 次
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                      gap: designSystem.spacing.lg,
+                      marginTop: designSystem.spacing.lg,
+                      paddingTop: designSystem.spacing.md,
+                      borderTop: `1px solid ${designSystem.colors.border.main}`,
+                    }}
+                  >
+                    <div>
+                      <div style={quietTextStyle}>置板</div>
+                      <div
+                        style={{
+                          marginTop: 2,
+                          fontSize: getFontSize('bodyLarge', isMobile),
+                          fontWeight: 700,
+                          color: designSystem.colors.text.primary,
+                        }}
+                      >
+                        {summary.boardApplied}/{summary.boardGranted} 年
+                      </div>
+                    </div>
+                    <div>
+                      <div style={quietTextStyle}>賽事</div>
+                      <div
+                        style={{
+                          marginTop: 2,
+                          fontSize: getFontSize('bodyLarge', isMobile),
+                          fontWeight: 700,
+                          color: designSystem.colors.text.primary,
+                        }}
+                      >
+                        {summary.competitionUsed}/{summary.competitionGranted} 次
+                      </div>
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -369,16 +420,21 @@ export function VoucherPackageManagementDialog({
                       marginBottom: designSystem.spacing.md,
                     }}
                   >
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: getFontSize('h3', isMobile),
-                        color: designSystem.colors.text.primary,
-                      }}
-                    >
+                    <h3 style={sectionTitleStyle}>
                       置板
                     </h3>
-                    <span style={quietTextStyle}>待處理 {boardPending} 年</span>
+                    <span
+                      style={{
+                        ...quietTextStyle,
+                        color:
+                          boardPending > 0
+                            ? designSystem.colors.warning[700]
+                            : designSystem.colors.success[700],
+                        fontWeight: 650,
+                      }}
+                    >
+                      待處理 {boardPending} 年
+                    </span>
                   </div>
                   {boardPending <= 0 ? (
                     <div style={quietTextStyle}>已全部處理</div>
@@ -395,7 +451,7 @@ export function VoucherPackageManagementDialog({
                             justifyContent: 'space-between',
                             gap: designSystem.spacing.md,
                             padding: '10px 0',
-                            borderTop: `1px solid ${designSystem.colors.border.light}`,
+                            borderTop: `1px solid ${designSystem.colors.border.main}`,
                           }}
                         >
                           <div>
@@ -421,7 +477,7 @@ export function VoucherPackageManagementDialog({
                             }
                             onClick={() => void handleApplyBoardYear(board.id)}
                             style={{
-                              ...getButtonStyle('outline', 'small', isMobile),
+                              ...getButtonStyle('secondary', 'small', isMobile),
                               opacity:
                                 savingKey !== null || !board.expires_at ? 0.5 : 1,
                             }}
@@ -439,40 +495,55 @@ export function VoucherPackageManagementDialog({
 
               {summary.competitionGranted > 0 ? (
                 <section style={sectionStyle}>
-                  <h3
-                    style={{
-                      margin: '0 0 8px',
-                      fontSize: getFontSize('h3', isMobile),
-                      color: designSystem.colors.text.primary,
-                    }}
-                  >
+                  <h3 style={{ ...sectionTitleStyle, marginBottom: 8 }}>
                     賽事兌換
                   </h3>
                   {summary.booksAvailableThisCompetition > 0 ? (
                     <>
-                      <div style={{ ...quietTextStyle, marginBottom: 10 }}>
-                        本次可增加 {competitionMinutes.toLocaleString()} 分
-                      </div>
-                      <input
-                        type="text"
-                        value={competitionNote}
-                        onChange={(event) => setCompetitionNote(event.target.value)}
-                        placeholder="賽事備註"
-                        style={getInputStyle(isMobile)}
-                      />
-                      <button
-                        type="button"
-                        disabled={savingKey !== null}
-                        onClick={() => void handleRedeemCompetition()}
+                      <div
                         style={{
-                          ...getButtonStyle('primary', 'medium', isMobile),
-                          width: '100%',
-                          marginTop: designSystem.spacing.sm,
-                          opacity: savingKey !== null ? 0.55 : 1,
+                          ...quietTextStyle,
+                          marginBottom: designSystem.spacing.md,
                         }}
                       >
-                        {savingKey === 'competition' ? '兌換中…' : '確認兌換'}
-                      </button>
+                        本次可增加{' '}
+                        <strong
+                          style={{
+                            color: designSystem.colors.text.primary,
+                            fontSize: getFontSize('body', isMobile),
+                          }}
+                        >
+                          {competitionMinutes.toLocaleString()} 分
+                        </strong>
+                      </div>
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'minmax(0, 1fr) auto',
+                          gap: designSystem.spacing.sm,
+                          alignItems: 'stretch',
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={competitionNote}
+                          onChange={(event) => setCompetitionNote(event.target.value)}
+                          placeholder="賽事備註"
+                          style={getInputStyle(isMobile)}
+                        />
+                        <button
+                          type="button"
+                          disabled={savingKey !== null}
+                          onClick={() => void handleRedeemCompetition()}
+                          style={{
+                            ...getButtonStyle('info', 'medium', isMobile),
+                            minWidth: isMobile ? 108 : 124,
+                            opacity: savingKey !== null ? 0.55 : 1,
+                          }}
+                        >
+                          {savingKey === 'competition' ? '兌換中…' : '確認兌換'}
+                        </button>
+                      </div>
                     </>
                   ) : (
                     <div style={quietTextStyle}>目前沒有可兌換的次數</div>
@@ -481,13 +552,7 @@ export function VoucherPackageManagementDialog({
               ) : null}
 
               {detail.purchases.length > 0 ? <section style={sectionStyle}>
-                <h3
-                  style={{
-                    margin: '0 0 8px',
-                    fontSize: getFontSize('h3', isMobile),
-                    color: designSystem.colors.text.primary,
-                  }}
-                >
+                <h3 style={{ ...sectionTitleStyle, marginBottom: 8 }}>
                   購買紀錄
                 </h3>
                 {detail.purchases.map((purchase) => (
@@ -499,7 +564,7 @@ export function VoucherPackageManagementDialog({
                       alignItems: 'center',
                       gap: designSystem.spacing.md,
                       padding: '12px 0',
-                      borderTop: `1px solid ${designSystem.colors.border.light}`,
+                      borderTop: `1px solid ${designSystem.colors.border.main}`,
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
@@ -544,13 +609,7 @@ export function VoucherPackageManagementDialog({
 
               {detail.redemptions.length > 0 ? (
                 <section style={sectionStyle}>
-                  <h3
-                    style={{
-                      margin: '0 0 8px',
-                      fontSize: getFontSize('h3', isMobile),
-                      color: designSystem.colors.text.primary,
-                    }}
-                  >
+                  <h3 style={{ ...sectionTitleStyle, marginBottom: 8 }}>
                     賽事紀錄
                   </h3>
                   {detail.redemptions.map((redemption) => (
@@ -562,7 +621,7 @@ export function VoucherPackageManagementDialog({
                         alignItems: 'center',
                         gap: designSystem.spacing.md,
                         padding: '10px 0',
-                        borderTop: `1px solid ${designSystem.colors.border.light}`,
+                        borderTop: `1px solid ${designSystem.colors.border.main}`,
                       }}
                     >
                       <div>
@@ -606,13 +665,7 @@ export function VoucherPackageManagementDialog({
 
               {detail.board_applications.length > 0 ? (
                 <section style={sectionStyle}>
-                  <h3
-                    style={{
-                      margin: '0 0 8px',
-                      fontSize: getFontSize('h3', isMobile),
-                      color: designSystem.colors.text.primary,
-                    }}
-                  >
+                  <h3 style={{ ...sectionTitleStyle, marginBottom: 8 }}>
                     置板紀錄
                   </h3>
                   {detail.board_applications.map((application) => (
@@ -620,7 +673,7 @@ export function VoucherPackageManagementDialog({
                       key={application.id}
                       style={{
                         padding: '10px 0',
-                        borderTop: `1px solid ${designSystem.colors.border.light}`,
+                        borderTop: `1px solid ${designSystem.colors.border.main}`,
                       }}
                     >
                       <div
@@ -648,13 +701,14 @@ export function VoucherPackageManagementDialog({
             paddingBottom: isMobile
               ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
               : '20px',
-            borderTop: `1px solid ${designSystem.colors.border.light}`,
+            borderTop: `1px solid ${designSystem.colors.border.main}`,
+            background: designSystem.colors.background.card,
           }}
         >
           <button
             type="button"
             onClick={onClose}
-            style={{ ...getButtonStyle('outline', 'medium', isMobile), width: '100%' }}
+            style={{ ...getButtonStyle('secondary', 'medium', isMobile), width: '100%' }}
           >
             完成
           </button>
