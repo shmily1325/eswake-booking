@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { triggerHaptic } from '../../utils/haptic'
 import { BindingForm } from './components/BindingForm'
 import { ErrorView } from './components/ErrorView'
 import { LiffBootScreen } from './LiffBootScreen'
+import { resolveRuntimeLiffId } from './liffUrl'
 import { useLiffMember } from './useLiffMember'
 
 const MING_MEMBER_ID = '3ba83648-1f69-418a-8939-76a83e7014cb'
 const ACCENT = '#c8ff34'
 const CYAN = '#59e6ff'
+const PANEL_COUNT = 6
 
 const wrapped = {
   year: 2026,
@@ -147,12 +149,37 @@ function BrandMark() {
   )
 }
 
-function ScrollHint() {
+function useCountUp(target: number, enabled: boolean, duration = 1100) {
+  const [value, setValue] = useState(0)
+
+  useEffect(() => {
+    if (!enabled) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setValue(target)
+      return
+    }
+
+    let frame = 0
+    const startedAt = performance.now()
+    const tick = (now: number) => {
+      const progress = Math.min((now - startedAt) / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setValue(Math.round(target * eased))
+      if (progress < 1) frame = window.requestAnimationFrame(tick)
+    }
+    frame = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(frame)
+  }, [duration, enabled, target])
+
+  return value
+}
+
+function ScrollHint({ onNext }: { onNext: () => void }) {
   return (
-    <div className="wrapped-scroll-hint" aria-hidden="true">
+    <button className="wrapped-scroll-hint" type="button" onClick={onNext} aria-label="前往下一頁">
       <span />
-      SCROLL
-    </div>
+      NEXT
+    </button>
   )
 }
 
@@ -160,10 +187,43 @@ function WrappedStory() {
   const [generating, setGenerating] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [shareMessage, setShareMessage] = useState<string | null>(null)
+  const [activePanel, setActivePanel] = useState(0)
+  const panelRefs = useRef<Array<HTMLElement | null>>([])
+  const animatedMinutes = useCountUp(wrapped.totalMinutes, activePanel === 1)
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
   }, [previewUrl])
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter(entry => entry.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+      if (!visible) return
+      const index = Number((visible.target as HTMLElement).dataset.panelIndex)
+      if (Number.isInteger(index)) setActivePanel(index)
+    }, { threshold: [0.55, 0.72] })
+
+    panelRefs.current.forEach(panel => {
+      if (panel) observer.observe(panel)
+    })
+    return () => observer.disconnect()
+  }, [])
+
+  function panelRef(index: number) {
+    return (element: HTMLElement | null) => {
+      panelRefs.current[index] = element
+    }
+  }
+
+  function goToPanel(index: number) {
+    triggerHaptic('light')
+    panelRefs.current[index]?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start',
+    })
+  }
 
   async function buildPreview(): Promise<{ blob: Blob; url: string }> {
     const blob = await createWrappedCard()
@@ -226,6 +286,35 @@ function WrappedStory() {
           overflow-x: hidden;
           scroll-snap-type: y proximity;
         }
+        .wrapped-progress {
+          position: fixed;
+          z-index: 50;
+          top: calc(10px + var(--safe-area-inset-top, 0px));
+          left: 18px;
+          right: 18px;
+          display: grid;
+          grid-template-columns: repeat(${PANEL_COUNT}, 1fr);
+          gap: 5px;
+        }
+        .wrapped-progress button {
+          height: 3px;
+          padding: 0;
+          border: 0;
+          border-radius: 999px;
+          background: rgba(255,255,255,.2);
+          overflow: hidden;
+        }
+        .wrapped-progress button::after {
+          content: "";
+          display: block;
+          width: 100%;
+          height: 100%;
+          background: var(--wrapped-accent);
+          transform: scaleX(0);
+          transform-origin: left;
+          transition: transform .35s ease;
+        }
+        .wrapped-progress button[data-complete="true"]::after { transform: scaleX(1); }
         .wrapped-panel {
           min-height: 100svh;
           padding: calc(30px + var(--safe-area-inset-top, 0px)) 24px
@@ -236,6 +325,20 @@ function WrappedStory() {
           justify-content: space-between;
           scroll-snap-align: start;
           overflow: hidden;
+        }
+        .wrapped-panel [data-reveal] {
+          opacity: 0;
+          transform: translate3d(0, 30px, 0);
+        }
+        .wrapped-panel[data-active="true"] [data-reveal] {
+          animation: wrapped-reveal .72s cubic-bezier(.2,.8,.2,1) both;
+        }
+        .wrapped-panel[data-active="true"] [data-reveal="late"] {
+          animation-delay: .16s;
+        }
+        @keyframes wrapped-reveal {
+          from { opacity: 0; transform: translate3d(0, 30px, 0); }
+          to { opacity: 1; transform: translate3d(0, 0, 0); }
         }
         .wrapped-panel::after {
           content: "";
@@ -295,11 +398,26 @@ function WrappedStory() {
           display: flex;
           align-items: center;
           gap: 10px;
+          width: fit-content;
+          padding: 10px 0;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
           color: rgba(255,255,255,.38);
           font: 700 9px/1 Arial, sans-serif;
           letter-spacing: .16em;
         }
-        .wrapped-scroll-hint span { width: 42px; height: 1px; background: currentColor; }
+        .wrapped-scroll-hint span {
+          width: 42px;
+          height: 1px;
+          background: currentColor;
+          animation: wrapped-pulse 1.6s ease-in-out infinite;
+          transform-origin: left;
+        }
+        @keyframes wrapped-pulse {
+          0%, 100% { transform: scaleX(.45); opacity: .45; }
+          50% { transform: scaleX(1); opacity: 1; }
+        }
         .wrapped-ratio {
           position: relative;
           z-index: 1;
@@ -437,11 +555,40 @@ function WrappedStory() {
           font-weight: 800;
           font-size: 13px;
         }
+        @media (prefers-reduced-motion: reduce) {
+          .wrapped-panel [data-reveal] {
+            opacity: 1;
+            transform: none;
+          }
+          .wrapped-panel[data-active="true"] [data-reveal],
+          .wrapped-scroll-hint span {
+            animation: none;
+          }
+          .wrapped-progress button::after { transition: none; }
+        }
       `}</style>
 
-      <section className="wrapped-panel">
+      <nav className="wrapped-progress" aria-label="年度回顧頁面進度">
+        {Array.from({ length: PANEL_COUNT }, (_, index) => (
+          <button
+            key={index}
+            type="button"
+            data-complete={activePanel >= index}
+            aria-label={`前往第 ${index + 1} 頁`}
+            aria-current={activePanel === index ? 'step' : undefined}
+            onClick={() => goToPanel(index)}
+          />
+        ))}
+      </nav>
+
+      <section
+        ref={panelRef(0)}
+        data-panel-index="0"
+        data-active={activePanel === 0}
+        className="wrapped-panel"
+      >
         <BrandMark />
-        <div>
+        <div data-reveal>
           <div className="wrapped-kicker">2026 · So far</div>
           <h1 className="wrapped-display">
             MING’S<br />
@@ -450,15 +597,20 @@ function WrappedStory() {
           </h1>
           <p className="wrapped-subtitle">你今年留下的，不只是浪花。</p>
         </div>
-        <ScrollHint />
+        <div data-reveal="late"><ScrollHint onNext={() => goToPanel(1)} /></div>
       </section>
 
-      <section className="wrapped-panel">
+      <section
+        ref={panelRef(1)}
+        data-panel-index="1"
+        data-active={activePanel === 1}
+        className="wrapped-panel"
+      >
         <BrandMark />
-        <div>
+        <div data-reveal>
           <div className="wrapped-kicker">Your time</div>
           <h2 className="wrapped-display wrapped-accent">
-            {wrapped.totalMinutes.toLocaleString('en-US')}
+            {animatedMinutes.toLocaleString('en-US')}
           </h2>
           <p className="wrapped-subtitle">
             MINUTES<br />
@@ -468,12 +620,17 @@ function WrappedStory() {
             <br />都留在你喜歡的地方。
           </p>
         </div>
-        <ScrollHint />
+        <div data-reveal="late"><ScrollHint onNext={() => goToPanel(2)} /></div>
       </section>
 
-      <section className="wrapped-panel">
+      <section
+        ref={panelRef(2)}
+        data-panel-index="2"
+        data-active={activePanel === 2}
+        className="wrapped-panel"
+      >
         <BrandMark />
-        <div>
+        <div data-reveal>
           <div className="wrapped-kicker">Your #1 coach</div>
           <h2 className="wrapped-display wrapped-cyan">{wrapped.coach}</h2>
           <p className="wrapped-subtitle">
@@ -487,12 +644,17 @@ function WrappedStory() {
             <div className="wrapped-ratio-label"><span>TOGETHER</span><span>{wrapped.coachPercent}%</span></div>
           </div>
         </div>
-        <ScrollHint />
+        <div data-reveal="late"><ScrollHint onNext={() => goToPanel(3)} /></div>
       </section>
 
-      <section className="wrapped-panel">
+      <section
+        ref={panelRef(3)}
+        data-panel-index="3"
+        data-active={activePanel === 3}
+        className="wrapped-panel"
+      >
         <BrandMark />
-        <div>
+        <div data-reveal>
           <div className="wrapped-kicker">Your boat</div>
           <h2 className="wrapped-display">{wrapped.boat}</h2>
           <p className="wrapped-subtitle">
@@ -504,12 +666,17 @@ function WrappedStory() {
             <div className="wrapped-ratio-label"><span>G21 TIME</span><span>{wrapped.boatPercent}%</span></div>
           </div>
         </div>
-        <ScrollHint />
+        <div data-reveal="late"><ScrollHint onNext={() => goToPanel(4)} /></div>
       </section>
 
-      <section className="wrapped-panel">
+      <section
+        ref={panelRef(4)}
+        data-panel-index="4"
+        data-active={activePanel === 4}
+        className="wrapped-panel"
+      >
         <BrandMark />
-        <div>
+        <div data-reveal>
           <div className="wrapped-kicker">Your 2026 title</div>
           <h2 className="wrapped-display small wrapped-cyan">ES<br />地縛靈</h2>
           <p className="wrapped-subtitle">
@@ -517,12 +684,17 @@ function WrappedStory() {
             <br /><strong style={{ color: '#fff' }}>我們合理懷疑，你住在這裡。</strong>
           </p>
         </div>
-        <ScrollHint />
+        <div data-reveal="late"><ScrollHint onNext={() => goToPanel(5)} /></div>
       </section>
 
-      <section className="wrapped-panel wrapped-final">
+      <section
+        ref={panelRef(5)}
+        data-panel-index="5"
+        data-active={activePanel === 5}
+        className="wrapped-panel wrapped-final"
+      >
         <BrandMark />
-        <div className="wrapped-final-card">
+        <div className="wrapped-final-card" data-reveal>
           <BrandMark />
           <div className="wrapped-final-name">{wrapped.name}</div>
           <div className="wrapped-final-title">年度稱號｜{wrapped.title}</div>
@@ -535,7 +707,7 @@ function WrappedStory() {
             <div><strong>{wrapped.boat}</strong><span>YOUR BOAT</span></div>
           </div>
         </div>
-        <div>
+        <div data-reveal="late">
           <div className="wrapped-actions">
             <button className="wrapped-action primary" type="button" disabled={generating} onClick={() => void handleShare()}>
               {generating ? '產生中…' : '分享打卡卡片'}
@@ -585,11 +757,16 @@ function UnavailableView() {
 }
 
 export function MingWrappedDemoBanner({ memberId }: { memberId: string }) {
+  const location = useLocation()
   if (memberId !== MING_MEMBER_ID) return null
 
   return (
     <Link
-      to="/liff/wrapped"
+      to={{
+        pathname: '/liff/wrapped',
+        search: location.search,
+        hash: location.hash,
+      }}
       style={{
         display: 'block',
         margin: '18px 18px 0',
@@ -615,6 +792,10 @@ export function MingWrappedDemoBanner({ memberId }: { memberId: string }) {
 }
 
 export function WrappedDemo() {
+  const liffId = resolveRuntimeLiffId(
+    import.meta.env.VITE_LIFF_ID as string | undefined,
+    import.meta.env.VITE_LIFF_MIGRATION_ID as string | undefined,
+  )
   const {
     loading,
     error,
@@ -625,6 +806,7 @@ export function WrappedDemo() {
   } = useLiffMember({
     trackIconId: 'liff_wrapped_demo_open',
     lightMember: true,
+    liffId,
   })
 
   if (error) return <ErrorView error={error} onRetry={() => void retryInit()} />
