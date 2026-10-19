@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, PointerEvent as ReactPointerEvent } from 'react'
+import type { ChangeEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { triggerHaptic } from '../../utils/haptic'
@@ -56,10 +56,6 @@ function roundedRect(
 
 interface WrappedCardOptions {
   photoUrl?: string | null
-  photoZoom?: number
-  photoPositionX?: number
-  photoPositionY?: number
-  photoFilter?: 'color' | 'bw'
 }
 
 async function loadImage(src: string): Promise<HTMLImageElement> {
@@ -81,39 +77,37 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
   context.fillStyle = '#050505'
   context.fillRect(0, 0, canvas.width, canvas.height)
 
+  const hasPhoto = Boolean(options.photoUrl)
   if (options.photoUrl) {
     const photo = await loadImage(options.photoUrl)
-    const zoom = Math.max(1, options.photoZoom ?? 1)
-    const positionX = Math.min(100, Math.max(0, options.photoPositionX ?? 50)) / 100
-    const positionY = Math.min(100, Math.max(0, options.photoPositionY ?? 50)) / 100
-    const coverScale = Math.max(canvas.width / photo.naturalWidth, canvas.height / photo.naturalHeight)
-    const scale = coverScale * zoom
+    const scale = Math.max(canvas.width / photo.naturalWidth, canvas.height / photo.naturalHeight)
     const width = photo.naturalWidth * scale
     const height = photo.naturalHeight * scale
-    const x = -(width - canvas.width) * positionX
-    const y = -(height - canvas.height) * positionY
+    const x = (canvas.width - width) / 2
+    const y = (canvas.height - height) / 2
 
     context.save()
-    context.filter = options.photoFilter === 'bw'
-      ? 'grayscale(1) contrast(1.05) brightness(.7)'
-      : 'saturate(.92) contrast(1.04) brightness(.78)'
+    context.filter = 'saturate(.96) contrast(1.04) brightness(.9)'
     context.drawImage(photo, x, y, width, height)
     context.restore()
 
     const overlay = context.createLinearGradient(0, 0, 0, canvas.height)
     overlay.addColorStop(0, 'rgba(0,0,0,.58)')
-    overlay.addColorStop(.42, 'rgba(0,0,0,.2)')
-    overlay.addColorStop(1, 'rgba(0,0,0,.86)')
+    overlay.addColorStop(.26, 'rgba(0,0,0,.14)')
+    overlay.addColorStop(.58, 'rgba(0,0,0,.08)')
+    overlay.addColorStop(1, 'rgba(0,0,0,.88)')
     context.fillStyle = overlay
     context.fillRect(0, 0, canvas.width, canvas.height)
   }
 
-  context.strokeStyle = 'rgba(255, 255, 255, 0.18)'
-  context.lineWidth = 4
-  for (let radius = 180; radius <= 700; radius += 104) {
-    context.beginPath()
-    context.arc(970, 360, radius, 0, Math.PI * 2)
-    context.stroke()
+  if (!hasPhoto) {
+    context.strokeStyle = 'rgba(255, 255, 255, 0.18)'
+    context.lineWidth = 4
+    for (let radius = 180; radius <= 700; radius += 104) {
+      context.beginPath()
+      context.arc(970, 360, radius, 0, Math.PI * 2)
+      context.stroke()
+    }
   }
 
   context.fillStyle = ACCENT
@@ -135,22 +129,23 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
   }
 
   context.fillStyle = '#ffffff'
-  context.font = '900 118px Arial, "Noto Sans TC", sans-serif'
-  context.fillText(wrapped.name, 70, 350)
+  context.font = `900 ${hasPhoto ? 82 : 118}px Arial, "Noto Sans TC", sans-serif`
+  context.fillText(wrapped.name, 70, hasPhoto ? 300 : 350)
 
   context.fillStyle = CYAN
-  context.font = '800 54px Arial, "Noto Sans TC", sans-serif'
-  context.fillText(`年度稱號｜${wrapped.title}`, 76, 438)
+  context.font = `800 ${hasPhoto ? 42 : 54}px Arial, "Noto Sans TC", sans-serif`
+  context.fillText(`年度稱號｜${wrapped.title}`, 76, hasPhoto ? 375 : 438)
 
   context.fillStyle = '#ffffff'
-  context.font = '900 230px Arial, sans-serif'
-  context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, 790)
+  context.font = `900 ${hasPhoto ? 168 : 230}px Arial, sans-serif`
+  context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, hasPhoto ? 1370 : 790)
   context.fillStyle = 'rgba(255,255,255,0.64)'
-  context.font = '700 38px Arial, sans-serif'
-  context.fillText('MINUTES ON THE WATER', 76, 862)
+  context.font = `700 ${hasPhoto ? 30 : 38}px Arial, sans-serif`
+  context.fillText('MINUTES ON THE WATER', 76, hasPhoto ? 1435 : 862)
 
   context.fillStyle = 'rgba(255,255,255,0.12)'
-  roundedRect(context, 70, 1010, 940, 360, 42)
+  const statsY = hasPhoto ? 1490 : 1010
+  roundedRect(context, 70, statsY, 940, hasPhoto ? 220 : 360, 42)
   context.fill()
 
   const stats = [
@@ -161,25 +156,27 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
   stats.forEach((stat, index) => {
     const x = 112 + index * 300
     context.fillStyle = index === 1 ? CYAN : ACCENT
-    context.font = '900 65px Arial, "Noto Sans TC", sans-serif'
-    context.fillText(stat.value, x, 1172)
+    context.font = `900 ${hasPhoto ? 48 : 65}px Arial, "Noto Sans TC", sans-serif`
+    context.fillText(stat.value, x, hasPhoto ? 1595 : 1172)
     context.fillStyle = 'rgba(255,255,255,0.58)'
-    context.font = '700 25px Arial, sans-serif'
-    context.fillText(stat.label, x, 1234)
+    context.font = `700 ${hasPhoto ? 19 : 25}px Arial, sans-serif`
+    context.fillText(stat.label, x, hasPhoto ? 1650 : 1234)
   })
 
   context.fillStyle = '#ffffff'
-  context.font = '800 44px Arial, "Noto Sans TC", sans-serif'
-  context.fillText(wrapped.titleCopy, 72, 1548)
+  context.font = `800 ${hasPhoto ? 31 : 44}px Arial, "Noto Sans TC", sans-serif`
+  context.fillText(wrapped.titleCopy, 72, hasPhoto ? 1775 : 1548)
   context.fillStyle = 'rgba(255,255,255,0.54)'
-  context.font = '500 31px Arial, "Noto Sans TC", sans-serif'
-  context.fillText('RIDE TOGETHER.  ES WAKE SCHOOL', 72, 1620)
+  context.font = `500 ${hasPhoto ? 23 : 31}px Arial, "Noto Sans TC", sans-serif`
+  context.fillText('RIDE TOGETHER.  ES WAKE SCHOOL', 72, hasPhoto ? 1840 : 1620)
 
-  context.fillStyle = ACCENT
-  context.fillRect(70, 1760, 940, 12)
-  context.fillStyle = '#ffffff'
-  context.font = '700 27px Arial, sans-serif'
-  context.fillText('ES WAKE · 2026 WRAPPED', 70, 1830)
+  if (!hasPhoto) {
+    context.fillStyle = ACCENT
+    context.fillRect(70, 1760, 940, 12)
+    context.fillStyle = '#ffffff'
+    context.font = '700 27px Arial, sans-serif'
+    context.fillText('ES WAKE · 2026 WRAPPED', 70, 1830)
+  }
 
   return canvasToBlob(canvas)
 }
@@ -234,16 +231,8 @@ function WrappedStory() {
   const [shareMessage, setShareMessage] = useState<string | null>(null)
   const [shareStyle, setShareStyle] = useState<'type' | 'photo'>('type')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
-  const [photoZoom, setPhotoZoom] = useState(1)
-  const [photoPositionX, setPhotoPositionX] = useState(50)
-  const [photoPositionY, setPhotoPositionY] = useState(50)
-  const [photoFilter, setPhotoFilter] = useState<'color' | 'bw'>('color')
-  const [showPhotoEditor, setShowPhotoEditor] = useState(false)
   const [activePanel, setActivePanel] = useState(0)
   const panelRefs = useRef<Array<HTMLElement | null>>([])
-  const photoEditorRef = useRef<HTMLDivElement | null>(null)
-  const photoPointers = useRef(new Map<number, { x: number; y: number }>())
-  const lastPinchDistance = useRef<number | null>(null)
   const animatedMinutes = useCountUp(wrapped.waterMinutes, activePanel === 1)
 
   useEffect(() => () => {
@@ -286,10 +275,6 @@ function WrappedStory() {
     }
     const blob = await createWrappedCard({
       photoUrl: shareStyle === 'photo' ? photoUrl : null,
-      photoZoom,
-      photoPositionX,
-      photoPositionY,
-      photoFilter,
     })
     const url = URL.createObjectURL(blob)
     setPreviewBlob(blob)
@@ -307,12 +292,7 @@ function WrappedStory() {
     reader.onload = () => {
       if (typeof reader.result !== 'string') return
       setPhotoUrl(reader.result)
-      setPhotoZoom(1)
-      setPhotoPositionX(50)
-      setPhotoPositionY(50)
-      setPhotoFilter('color')
       setShareStyle('photo')
-      setShowPhotoEditor(true)
       setShareMessage(null)
     }
     reader.onerror = () => setShareMessage('照片讀取失敗，請重新選擇。')
@@ -374,53 +354,6 @@ function WrappedStory() {
       if (error instanceof DOMException && error.name === 'AbortError') return
       setShareMessage('請長按上方圖片，選擇「儲存圖片」。')
     }
-  }
-
-  function pointerDistance() {
-    const points = [...photoPointers.current.values()]
-    if (points.length < 2) return null
-    return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y)
-  }
-
-  function handlePhotoPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    event.currentTarget.setPointerCapture(event.pointerId)
-    photoPointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
-    lastPinchDistance.current = pointerDistance()
-  }
-
-  function handlePhotoPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
-    const previous = photoPointers.current.get(event.pointerId)
-    if (!previous) return
-    const pointerCount = photoPointers.current.size
-    photoPointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
-
-    if (pointerCount === 1) {
-      const bounds = photoEditorRef.current?.getBoundingClientRect()
-      if (!bounds) return
-      const dx = event.clientX - previous.x
-      const dy = event.clientY - previous.y
-      setPhotoPositionX(current => Math.min(100, Math.max(0, current - (dx / bounds.width) * 100)))
-      setPhotoPositionY(current => Math.min(100, Math.max(0, current - (dy / bounds.height) * 100)))
-      return
-    }
-
-    const distance = pointerDistance()
-    if (distance && lastPinchDistance.current) {
-      const ratio = distance / lastPinchDistance.current
-      setPhotoZoom(current => Math.min(3, Math.max(1, current * ratio)))
-    }
-    lastPinchDistance.current = distance
-  }
-
-  function handlePhotoPointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
-    photoPointers.current.delete(event.pointerId)
-    lastPinchDistance.current = pointerDistance()
-  }
-
-  function resetPhotoCrop() {
-    setPhotoZoom(1)
-    setPhotoPositionX(50)
-    setPhotoPositionY(50)
   }
 
   return (
@@ -637,7 +570,7 @@ function WrappedStory() {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          filter: grayscale(1) contrast(1.05) brightness(.7);
+          filter: saturate(.96) contrast(1.04) brightness(.9);
           z-index: 0;
         }
         .wrapped-final-card::after {
@@ -694,30 +627,7 @@ function WrappedStory() {
           width: min(100%, 390px);
           margin: 0 auto 12px;
         }
-        .wrapped-style-switch {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 6px;
-          padding: 4px;
-          border: 1px solid rgba(255,255,255,.14);
-          border-radius: 999px;
-          background: rgba(255,255,255,.06);
-        }
-        .wrapped-style-switch button {
-          padding: 9px 12px;
-          border: 0;
-          border-radius: 999px;
-          background: transparent;
-          color: rgba(255,255,255,.5);
-          font: 800 10px/1 Arial, sans-serif;
-          letter-spacing: .12em;
-        }
-        .wrapped-style-switch button[data-active="true"] {
-          background: #fff;
-          color: #050505;
-        }
         .wrapped-photo-controls {
-          margin-top: 10px;
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 8px;
@@ -735,7 +645,7 @@ function WrappedStory() {
         }
         .wrapped-photo-picker input { display: none; }
         .wrapped-photo-controls > :only-child { grid-column: 1 / -1; }
-        .wrapped-photo-edit {
+        .wrapped-photo-remove {
           padding: 10px 14px;
           border: 1px solid rgba(255,255,255,.18);
           border-radius: 999px;
@@ -743,138 +653,6 @@ function WrappedStory() {
           color: #fff;
           font-size: 12px;
           font-weight: 750;
-        }
-        .wrapped-photo-editor {
-          position: fixed;
-          inset: 0;
-          z-index: 140;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 14px;
-          padding: calc(18px + var(--safe-area-inset-top, 0px)) 18px
-            calc(18px + var(--safe-area-inset-bottom, 0px));
-          background: #050505;
-          color: #fff;
-        }
-        .wrapped-photo-editor-header,
-        .wrapped-photo-editor-actions {
-          width: min(78vw, 360px);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 8px;
-        }
-        .wrapped-photo-editor-header strong {
-          font-size: 13px;
-          letter-spacing: .08em;
-        }
-        .wrapped-photo-editor-header span {
-          color: rgba(255,255,255,.5);
-          font-size: 11px;
-        }
-        .wrapped-photo-stage {
-          position: relative;
-          width: min(78vw, 360px);
-          max-height: 70svh;
-          aspect-ratio: 9 / 16;
-          overflow: hidden;
-          border: 1px solid rgba(255,255,255,.18);
-          border-radius: 20px;
-          background: #111;
-          touch-action: none;
-          user-select: none;
-        }
-        .wrapped-photo-stage img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          pointer-events: none;
-          transform-origin: center;
-          will-change: transform;
-        }
-        .wrapped-photo-stage::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          z-index: 1;
-          background: linear-gradient(to bottom, rgba(0,0,0,.58), rgba(0,0,0,.12) 42%, rgba(0,0,0,.86));
-          pointer-events: none;
-        }
-        .wrapped-photo-stage::after {
-          content: "";
-          position: absolute;
-          inset: 0;
-          z-index: 3;
-          border: 1px solid rgba(255,255,255,.28);
-          box-shadow: inset 0 0 0 1px rgba(0,0,0,.25);
-          pointer-events: none;
-        }
-        .wrapped-editor-overlay {
-          position: absolute;
-          inset: 0;
-          z-index: 2;
-          display: flex;
-          flex-direction: column;
-          padding: 7%;
-          pointer-events: none;
-        }
-        .wrapped-editor-brand {
-          font: 800 clamp(8px, 2.4vw, 12px)/1 Arial, sans-serif;
-          letter-spacing: .12em;
-        }
-        .wrapped-editor-name {
-          margin-top: 17%;
-          font: 900 clamp(34px, 11vw, 58px)/.88 Arial Black, Arial, sans-serif;
-          letter-spacing: -.07em;
-        }
-        .wrapped-editor-title {
-          margin-top: 10px;
-          color: var(--wrapped-cyan);
-          font-weight: 800;
-          font-size: clamp(12px, 3.6vw, 18px);
-        }
-        .wrapped-editor-bottom { margin-top: auto; }
-        .wrapped-editor-minutes {
-          font: 900 clamp(38px, 13vw, 68px)/.9 Arial Black, Arial, sans-serif;
-          letter-spacing: -.07em;
-        }
-        .wrapped-editor-label,
-        .wrapped-editor-meta,
-        .wrapped-editor-signoff {
-          margin-top: 7px;
-          color: rgba(255,255,255,.65);
-          font: 700 clamp(7px, 2.1vw, 10px)/1.3 Arial, sans-serif;
-          letter-spacing: .11em;
-        }
-        .wrapped-editor-meta {
-          margin-top: 18px;
-          padding-top: 14px;
-          border-top: 1px solid rgba(255,255,255,.24);
-        }
-        .wrapped-editor-signoff { margin-top: 14px; color: #fff; font-weight: 850; }
-        .wrapped-photo-filter {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 5px;
-          width: min(78vw, 360px);
-        }
-        .wrapped-photo-filter button,
-        .wrapped-photo-editor-actions button {
-          min-height: 42px;
-          border: 1px solid rgba(255,255,255,.2);
-          border-radius: 999px;
-          background: transparent;
-          color: rgba(255,255,255,.62);
-          font-weight: 800;
-          font-size: 11px;
-          letter-spacing: .1em;
-        }
-        .wrapped-photo-filter button[data-active="true"],
-        .wrapped-photo-editor-actions button:last-child {
-          background: #fff;
-          color: #050505;
         }
         .wrapped-title-panel {
           background: #f7f7f5;
@@ -1090,19 +868,15 @@ function WrappedStory() {
         className="wrapped-panel wrapped-final"
       >
         <BrandMark />
-        <div className="wrapped-final-card" data-reveal>
+        <div
+          className={`wrapped-final-card ${shareStyle === 'photo' && photoUrl ? 'has-photo' : ''}`}
+          data-reveal
+        >
           {shareStyle === 'photo' && photoUrl && (
             <img
               className="wrapped-final-photo"
               src={photoUrl}
               alt=""
-              style={{
-                objectPosition: `${photoPositionX}% ${photoPositionY}%`,
-                transform: `scale(${photoZoom})`,
-                filter: photoFilter === 'bw'
-                  ? 'grayscale(1) contrast(1.05) brightness(.7)'
-                  : 'saturate(.92) contrast(1.04) brightness(.78)',
-              }}
             />
           )}
           <BrandMark />
@@ -1120,39 +894,25 @@ function WrappedStory() {
         </div>
         <div data-reveal="late">
           <div className="wrapped-share-editor">
-            <div className="wrapped-style-switch" aria-label="選擇分享卡樣式">
-              <button
-                type="button"
-                data-active={shareStyle === 'type'}
-                onClick={() => setShareStyle('type')}
-              >
-                TYPE
-              </button>
-              <button
-                type="button"
-                data-active={shareStyle === 'photo'}
-                onClick={() => setShareStyle('photo')}
-              >
-                PHOTO
-              </button>
+            <div className="wrapped-photo-controls">
+              <label className="wrapped-photo-picker">
+                {photoUrl ? '更換照片' : '加入照片'}
+                <input type="file" accept="image/*" onChange={handlePhotoChange} />
+              </label>
+              {photoUrl && (
+                <button
+                  className="wrapped-photo-remove"
+                  type="button"
+                  onClick={() => {
+                    setPhotoUrl(null)
+                    setShareStyle('type')
+                    setShareMessage(null)
+                  }}
+                >
+                  使用純文字版
+                </button>
+              )}
             </div>
-            {shareStyle === 'photo' && (
-              <div className="wrapped-photo-controls">
-                <label className="wrapped-photo-picker">
-                  {photoUrl ? '更換照片' : '從手機選擇照片'}
-                  <input type="file" accept="image/*" onChange={handlePhotoChange} />
-                </label>
-                {photoUrl && (
-                  <button
-                    className="wrapped-photo-edit"
-                    type="button"
-                    onClick={() => setShowPhotoEditor(true)}
-                  >
-                    調整照片
-                  </button>
-                )}
-              </div>
-            )}
           </div>
           <div className="wrapped-actions">
             <button className="wrapped-action primary" type="button" disabled={generating} onClick={() => void handleShare()}>
@@ -1166,71 +926,6 @@ function WrappedStory() {
           <Link className="wrapped-back" to="/liff">返回會員專區</Link>
         </div>
       </section>
-
-      {showPhotoEditor && photoUrl && (
-        <div className="wrapped-photo-editor" role="dialog" aria-modal="true" aria-label="調整分享卡照片">
-          <div className="wrapped-photo-editor-header">
-            <strong>調整照片</strong>
-            <span>拖曳移動 · 雙指縮放</span>
-          </div>
-          <div
-            ref={photoEditorRef}
-            className="wrapped-photo-stage"
-            onPointerDown={handlePhotoPointerDown}
-            onPointerMove={handlePhotoPointerMove}
-            onPointerUp={handlePhotoPointerEnd}
-            onPointerCancel={handlePhotoPointerEnd}
-          >
-            <img
-              src={photoUrl}
-              alt="分享卡照片裁切預覽"
-              draggable={false}
-              style={{
-                objectPosition: `${photoPositionX}% ${photoPositionY}%`,
-                transform: `scale(${photoZoom})`,
-                filter: photoFilter === 'bw'
-                  ? 'grayscale(1) contrast(1.05) brightness(.78)'
-                  : 'saturate(.96) contrast(1.03) brightness(.9)',
-              }}
-            />
-            <div className="wrapped-editor-overlay" aria-hidden="true">
-              <div className="wrapped-editor-brand">ES WAKE · {wrapped.year}</div>
-              <div className="wrapped-editor-name">{wrapped.name}</div>
-              <div className="wrapped-editor-title">{wrapped.title}</div>
-              <div className="wrapped-editor-bottom">
-                <div className="wrapped-editor-minutes">
-                  {wrapped.waterMinutes.toLocaleString('en-US')}
-                </div>
-                <div className="wrapped-editor-label">MINUTES ON THE WATER</div>
-                <div className="wrapped-editor-meta">
-                  {wrapped.waterSessions} WATER SESSIONS · {wrapped.boat}
-                </div>
-                <div className="wrapped-editor-signoff">RIDE TOGETHER.</div>
-              </div>
-            </div>
-          </div>
-          <div className="wrapped-photo-filter" aria-label="照片色彩">
-            <button
-              type="button"
-              data-active={photoFilter === 'color'}
-              onClick={() => setPhotoFilter('color')}
-            >
-              COLOR
-            </button>
-            <button
-              type="button"
-              data-active={photoFilter === 'bw'}
-              onClick={() => setPhotoFilter('bw')}
-            >
-              B&amp;W
-            </button>
-          </div>
-          <div className="wrapped-photo-editor-actions">
-            <button type="button" onClick={resetPhotoCrop}>重設</button>
-            <button type="button" onClick={() => setShowPhotoEditor(false)}>完成</button>
-          </div>
-        </div>
-      )}
 
       {previewUrl && (
         <div className="wrapped-preview" role="dialog" aria-modal="true" aria-label="年度打卡卡片預覽">
