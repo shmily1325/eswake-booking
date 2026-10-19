@@ -11,7 +11,7 @@ import { useLiffMember } from './useLiffMember'
 
 const MING_MEMBER_ID = '3ba83648-1f69-418a-8939-76a83e7014cb'
 const ACCENT = '#ffffff'
-const CYAN = '#8bc9d6'
+const CYAN = '#7fafba'
 const PANEL_COUNT = 6
 
 const wrapped = {
@@ -92,10 +92,10 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
     context.restore()
 
     const overlay = context.createLinearGradient(0, 0, 0, canvas.height)
-    overlay.addColorStop(0, 'rgba(0,0,0,.58)')
-    overlay.addColorStop(.26, 'rgba(0,0,0,.14)')
-    overlay.addColorStop(.58, 'rgba(0,0,0,.08)')
-    overlay.addColorStop(1, 'rgba(0,0,0,.88)')
+    overlay.addColorStop(0, 'rgba(0,0,0,.44)')
+    overlay.addColorStop(.52, 'rgba(0,0,0,.04)')
+    overlay.addColorStop(.7, 'rgba(0,0,0,.22)')
+    overlay.addColorStop(1, 'rgba(0,0,0,.94)')
     context.fillStyle = overlay
     context.fillRect(0, 0, canvas.width, canvas.height)
   }
@@ -128,49 +128,59 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
     context.fillText('ES WAKE', 846, 112)
   }
 
-  context.fillStyle = '#ffffff'
-  context.font = `900 ${hasPhoto ? 82 : 118}px Arial, "Noto Sans TC", sans-serif`
-  context.fillText(wrapped.name, 70, hasPhoto ? 300 : 350)
+  if (hasPhoto) {
+    context.fillStyle = '#ffffff'
+    context.font = '800 31px Arial, "Noto Sans TC", sans-serif'
+    context.fillText(`${wrapped.name} · ES ${wrapped.year}`, 72, 1445)
 
-  context.fillStyle = CYAN
-  context.font = `800 ${hasPhoto ? 42 : 54}px Arial, "Noto Sans TC", sans-serif`
-  context.fillText(`年度稱號｜${wrapped.title}`, 76, hasPhoto ? 375 : 438)
+    context.fillStyle = '#ffffff'
+    context.font = '900 190px Arial, sans-serif'
+    context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, 1645)
+    context.fillStyle = 'rgba(255,255,255,0.66)'
+    context.font = '700 29px Arial, sans-serif'
+    context.fillText('MINUTES ON THE WATER', 72, 1702)
 
-  context.fillStyle = '#ffffff'
-  context.font = `900 ${hasPhoto ? 168 : 230}px Arial, sans-serif`
-  context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, hasPhoto ? 1370 : 790)
-  context.fillStyle = 'rgba(255,255,255,0.64)'
-  context.font = `700 ${hasPhoto ? 30 : 38}px Arial, sans-serif`
-  context.fillText('MINUTES ON THE WATER', 76, hasPhoto ? 1435 : 862)
+    context.fillStyle = CYAN
+    context.font = '800 30px Arial, "Noto Sans TC", sans-serif'
+    context.fillText(`年度稱號｜${wrapped.title}`, 72, 1805)
+  } else {
+    context.fillStyle = '#ffffff'
+    context.font = '900 118px Arial, "Noto Sans TC", sans-serif'
+    context.fillText(wrapped.name, 70, 350)
+    context.fillStyle = CYAN
+    context.font = '800 54px Arial, "Noto Sans TC", sans-serif'
+    context.fillText(`年度稱號｜${wrapped.title}`, 76, 438)
+    context.fillStyle = '#ffffff'
+    context.font = '900 230px Arial, sans-serif'
+    context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, 790)
+    context.fillStyle = 'rgba(255,255,255,0.64)'
+    context.font = '700 38px Arial, sans-serif'
+    context.fillText('MINUTES ON THE WATER', 76, 862)
 
-  context.fillStyle = 'rgba(255,255,255,0.12)'
-  const statsY = hasPhoto ? 1490 : 1010
-  roundedRect(context, 70, statsY, 940, hasPhoto ? 220 : 360, 42)
-  context.fill()
+    context.fillStyle = 'rgba(255,255,255,0.12)'
+    roundedRect(context, 70, 1010, 940, 360, 42)
+    context.fill()
+    const stats = [
+      { label: 'WATER SESSIONS', value: String(wrapped.waterSessions) },
+      { label: 'COACHES', value: String(wrapped.coaches.length) },
+      { label: 'YOUR BOAT', value: wrapped.boat },
+    ]
+    stats.forEach((stat, index) => {
+      const x = 112 + index * 300
+      context.fillStyle = index === 1 ? CYAN : ACCENT
+      context.font = '900 65px Arial, "Noto Sans TC", sans-serif'
+      context.fillText(stat.value, x, 1172)
+      context.fillStyle = 'rgba(255,255,255,0.58)'
+      context.font = '700 25px Arial, sans-serif'
+      context.fillText(stat.label, x, 1234)
+    })
 
-  const stats = [
-    { label: 'WATER SESSIONS', value: String(wrapped.waterSessions) },
-    { label: 'COACHES', value: String(wrapped.coaches.length) },
-    { label: 'YOUR BOAT', value: wrapped.boat },
-  ]
-  stats.forEach((stat, index) => {
-    const x = 112 + index * 300
-    context.fillStyle = index === 1 ? CYAN : ACCENT
-    context.font = `900 ${hasPhoto ? 48 : 65}px Arial, "Noto Sans TC", sans-serif`
-    context.fillText(stat.value, x, hasPhoto ? 1595 : 1172)
-    context.fillStyle = 'rgba(255,255,255,0.58)'
-    context.font = `700 ${hasPhoto ? 19 : 25}px Arial, sans-serif`
-    context.fillText(stat.label, x, hasPhoto ? 1650 : 1234)
-  })
-
-  context.fillStyle = '#ffffff'
-  context.font = `800 ${hasPhoto ? 31 : 44}px Arial, "Noto Sans TC", sans-serif`
-  context.fillText(wrapped.titleCopy, 72, hasPhoto ? 1775 : 1548)
-  context.fillStyle = 'rgba(255,255,255,0.54)'
-  context.font = `500 ${hasPhoto ? 23 : 31}px Arial, "Noto Sans TC", sans-serif`
-  context.fillText('RIDE TOGETHER.  ES WAKE SCHOOL', 72, hasPhoto ? 1840 : 1620)
-
-  if (!hasPhoto) {
+    context.fillStyle = '#ffffff'
+    context.font = '800 44px Arial, "Noto Sans TC", sans-serif'
+    context.fillText(wrapped.titleCopy, 72, 1548)
+    context.fillStyle = 'rgba(255,255,255,0.54)'
+    context.font = '500 31px Arial, "Noto Sans TC", sans-serif'
+    context.fillText('RIDE TOGETHER.  ES WAKE SCHOOL', 72, 1620)
     context.fillStyle = ACCENT
     context.fillRect(70, 1760, 940, 12)
     context.fillStyle = '#ffffff'
@@ -219,7 +229,7 @@ function ScrollHint({ onNext }: { onNext: () => void }) {
   return (
     <button className="wrapped-scroll-hint" type="button" onClick={onNext} aria-label="前往下一頁">
       <span />
-      NEXT
+      <b aria-hidden="true">↓</b>
     </button>
   )
 }
@@ -429,11 +439,11 @@ function WrappedStory() {
           position: absolute;
           width: 440px;
           height: 440px;
-          border: 1px solid rgba(200,255,52,.2);
+          border: 1px solid rgba(127,175,186,.2);
           border-radius: 50%;
           right: -260px;
           top: 18%;
-          box-shadow: 0 0 0 70px rgba(200,255,52,.04), 0 0 0 140px rgba(200,255,52,.025);
+          box-shadow: 0 0 0 70px rgba(127,175,186,.04), 0 0 0 140px rgba(127,175,186,.025);
           pointer-events: none;
         }
         .wrapped-brand {
@@ -492,21 +502,30 @@ function WrappedStory() {
         .wrapped-accent { color: var(--wrapped-accent); }
         .wrapped-cyan { color: var(--wrapped-cyan); }
         .wrapped-water-panel .wrapped-accent { color: var(--wrapped-cyan); }
-        .wrapped-boat-panel { background: #0c2530; }
+        .wrapped-boat-panel {
+          background:
+            radial-gradient(circle at 100% 25%, rgba(127,175,186,.1), transparent 42%),
+            #050505;
+        }
         .wrapped-scroll-hint {
           position: relative;
           z-index: 1;
           display: flex;
           align-items: center;
           gap: 10px;
-          width: fit-content;
-          padding: 10px 0;
+          width: 100%;
+          min-height: 64px;
+          padding: 20px 0 4px;
           border: 0;
           border-radius: 0;
           background: transparent;
           color: rgba(255,255,255,.38);
           font: 700 9px/1 Arial, sans-serif;
           letter-spacing: .16em;
+        }
+        .wrapped-scroll-hint b {
+          font-size: 14px;
+          font-weight: 500;
         }
         .wrapped-scroll-hint span {
           width: 42px;
@@ -581,6 +600,15 @@ function WrappedStory() {
           pointer-events: none;
           z-index: 0;
         }
+        .wrapped-final-card.has-photo::after {
+          background: linear-gradient(
+            to bottom,
+            rgba(0,0,0,.42),
+            rgba(0,0,0,.03) 52%,
+            rgba(0,0,0,.2) 70%,
+            rgba(0,0,0,.94)
+          );
+        }
         .wrapped-final-card .wrapped-brand img { width: 28px; height: 28px; }
         .wrapped-final-name {
           margin-top: 22%;
@@ -620,6 +648,23 @@ function WrappedStory() {
           color: rgba(255,255,255,.74);
           font: 800 10px/1 Arial, sans-serif;
           letter-spacing: .14em;
+        }
+        .wrapped-final-photo-content {
+          position: relative;
+          z-index: 1;
+          margin-top: auto;
+        }
+        .wrapped-final-photo-kicker {
+          color: #fff;
+          font: 800 11px/1 Arial, sans-serif;
+          letter-spacing: .12em;
+        }
+        .wrapped-final-photo-content .wrapped-final-minutes {
+          margin-top: 14px;
+        }
+        .wrapped-final-photo-content .wrapped-final-title {
+          margin-top: 18px;
+          font-size: 13px;
         }
         .wrapped-share-editor {
           position: relative;
@@ -663,8 +708,8 @@ function WrappedStory() {
           box-shadow: 0 0 0 70px rgba(0,0,0,.035), 0 0 0 140px rgba(0,0,0,.02);
         }
         .wrapped-title-panel .wrapped-brand img { filter: invert(1); }
-        .wrapped-title-panel .wrapped-kicker,
-        .wrapped-title-panel .wrapped-cyan { color: #050505; }
+        .wrapped-title-panel .wrapped-kicker { color: #050505; }
+        .wrapped-title-panel .wrapped-cyan { color: #527d87; }
         .wrapped-title-panel .wrapped-subtitle { color: rgba(0,0,0,.58); }
         .wrapped-title-panel .wrapped-subtitle strong { color: #050505 !important; }
         .wrapped-title-panel .wrapped-scroll-hint { color: rgba(0,0,0,.42); }
@@ -766,7 +811,7 @@ function WrappedStory() {
           <h1 className="wrapped-display">
             MING’S<br />
             YEAR ON<br />
-            <span className="wrapped-accent">THE WATER.</span>
+            <span className="wrapped-cyan">THE WATER.</span>
           </h1>
         </div>
         <div data-reveal="late"><ScrollHint onNext={() => goToPanel(1)} /></div>
@@ -880,17 +925,30 @@ function WrappedStory() {
             />
           )}
           <BrandMark />
-          <div className="wrapped-final-name">{wrapped.name}</div>
-          <div className="wrapped-final-title">年度稱號｜{wrapped.title}</div>
-          <div className="wrapped-final-minutes">
-            {wrapped.waterMinutes.toLocaleString('en-US')}
-          </div>
-          <div className="wrapped-final-label">MINUTES ON THE WATER</div>
-          <div className="wrapped-final-stats">
-            <div><strong>{wrapped.waterSessions}</strong><span>WATER SESSIONS</span></div>
-            <div><strong>{wrapped.boat}</strong><span>YOUR BOAT</span></div>
-          </div>
-          <div className="wrapped-final-signoff">RIDE TOGETHER.</div>
+          {shareStyle === 'photo' && photoUrl ? (
+            <div className="wrapped-final-photo-content">
+              <div className="wrapped-final-photo-kicker">{wrapped.name} · ES {wrapped.year}</div>
+              <div className="wrapped-final-minutes">
+                {wrapped.waterMinutes.toLocaleString('en-US')}
+              </div>
+              <div className="wrapped-final-label">MINUTES ON THE WATER</div>
+              <div className="wrapped-final-title">年度稱號｜{wrapped.title}</div>
+            </div>
+          ) : (
+            <>
+              <div className="wrapped-final-name">{wrapped.name}</div>
+              <div className="wrapped-final-title">年度稱號｜{wrapped.title}</div>
+              <div className="wrapped-final-minutes">
+                {wrapped.waterMinutes.toLocaleString('en-US')}
+              </div>
+              <div className="wrapped-final-label">MINUTES ON THE WATER</div>
+              <div className="wrapped-final-stats">
+                <div><strong>{wrapped.waterSessions}</strong><span>WATER SESSIONS</span></div>
+                <div><strong>{wrapped.boat}</strong><span>YOUR BOAT</span></div>
+              </div>
+              <div className="wrapped-final-signoff">RIDE TOGETHER.</div>
+            </>
+          )}
         </div>
         <div data-reveal="late">
           <div className="wrapped-share-editor">
@@ -985,14 +1043,14 @@ export function MingWrappedDemoBanner({ memberId }: { memberId: string }) {
         boxShadow: '0 12px 32px rgba(0,0,0,.16)',
       }}
     >
-      <div style={{ color: ACCENT, font: '800 11px/1 Arial, sans-serif', letterSpacing: '.14em' }}>
+      <div style={{ color: CYAN, font: '800 11px/1 Arial, sans-serif', letterSpacing: '.14em' }}>
         2026 SO FAR
       </div>
       <div style={{ marginTop: 13, fontSize: 27, fontWeight: 900, lineHeight: 1.08, letterSpacing: '-.04em' }}>
         MING’S YEAR<br />ON THE WATER.
       </div>
       <div style={{ marginTop: 18, color: 'rgba(255,255,255,.62)', fontSize: 13 }}>
-        查看你的年度回顧 <span style={{ color: ACCENT }}>→</span>
+        查看你的年度回顧 <span style={{ color: CYAN }}>→</span>
       </div>
     </Link>
   )
