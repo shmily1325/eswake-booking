@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { triggerHaptic } from '../../utils/haptic'
@@ -9,24 +10,25 @@ import { resolveRuntimeLiffId } from './liffUrl'
 import { useLiffMember } from './useLiffMember'
 
 const MING_MEMBER_ID = '3ba83648-1f69-418a-8939-76a83e7014cb'
-const ACCENT = '#c8ff34'
-const CYAN = '#59e6ff'
+const ACCENT = '#ffffff'
+const CYAN = '#d7d9dd'
 const PANEL_COUNT = 6
 
 const wrapped = {
   year: 2026,
   name: 'MING',
-  title: '地縛靈',
-  totalMinutes: 6470,
+  title: 'ES 地縛靈',
+  titleCopy: '我們合理懷疑，你住在這裡。',
+  waterMinutes: 4940,
+  landMinutes: 1530,
   sessions: 127,
-  hours: 107,
-  remainingMinutes: 50,
-  coach: '阿寶',
-  coachMinutes: 6250,
-  coachPercent: 97,
+  waterSessions: 102,
+  waterHours: 82,
+  waterRemainingMinutes: 20,
+  coaches: ['阿寶', 'ED', 'Jerry'],
   boat: 'G21',
   boatMinutes: 3830,
-  boatPercent: 59,
+  boatPercent: 78,
   peakMonth: 'SEPTEMBER',
   peakMinutes: 1085,
 }
@@ -52,7 +54,20 @@ function roundedRect(
   context.roundRect(x, y, width, height, radius)
 }
 
-async function createWrappedCard(): Promise<Blob> {
+interface WrappedCardOptions {
+  photoUrl?: string | null
+  photoZoom?: number
+  photoPositionY?: number
+}
+
+async function loadImage(src: string): Promise<HTMLImageElement> {
+  const image = new Image()
+  image.src = src
+  await image.decode()
+  return image
+}
+
+async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob> {
   const canvas = document.createElement('canvas')
   canvas.width = 1080
   canvas.height = 1920
@@ -64,7 +79,31 @@ async function createWrappedCard(): Promise<Blob> {
   context.fillStyle = '#050505'
   context.fillRect(0, 0, canvas.width, canvas.height)
 
-  context.strokeStyle = 'rgba(200, 255, 52, 0.25)'
+  if (options.photoUrl) {
+    const photo = await loadImage(options.photoUrl)
+    const zoom = Math.max(1, options.photoZoom ?? 1)
+    const positionY = Math.min(100, Math.max(0, options.photoPositionY ?? 50)) / 100
+    const coverScale = Math.max(canvas.width / photo.naturalWidth, canvas.height / photo.naturalHeight)
+    const scale = coverScale * zoom
+    const width = photo.naturalWidth * scale
+    const height = photo.naturalHeight * scale
+    const x = (canvas.width - width) / 2
+    const y = -(height - canvas.height) * positionY
+
+    context.save()
+    context.filter = 'grayscale(1) contrast(1.05) brightness(.7)'
+    context.drawImage(photo, x, y, width, height)
+    context.restore()
+
+    const overlay = context.createLinearGradient(0, 0, 0, canvas.height)
+    overlay.addColorStop(0, 'rgba(0,0,0,.58)')
+    overlay.addColorStop(.42, 'rgba(0,0,0,.2)')
+    overlay.addColorStop(1, 'rgba(0,0,0,.86)')
+    context.fillStyle = overlay
+    context.fillRect(0, 0, canvas.width, canvas.height)
+  }
+
+  context.strokeStyle = 'rgba(255, 255, 255, 0.18)'
   context.lineWidth = 4
   for (let radius = 180; radius <= 700; radius += 104) {
     context.beginPath()
@@ -77,7 +116,7 @@ async function createWrappedCard(): Promise<Blob> {
   context.fill()
   context.fillStyle = '#050505'
   context.font = '700 27px Arial, sans-serif'
-  context.fillText('2026 SO FAR', 104, 111)
+  context.fillText('ES WAKE · 2026', 92, 111)
 
   try {
     const logo = new Image()
@@ -100,7 +139,7 @@ async function createWrappedCard(): Promise<Blob> {
 
   context.fillStyle = '#ffffff'
   context.font = '900 230px Arial, sans-serif'
-  context.fillText(wrapped.totalMinutes.toLocaleString('en-US'), 58, 790)
+  context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, 790)
   context.fillStyle = 'rgba(255,255,255,0.64)'
   context.font = '700 38px Arial, sans-serif'
   context.fillText('MINUTES ON THE WATER', 76, 862)
@@ -110,8 +149,8 @@ async function createWrappedCard(): Promise<Blob> {
   context.fill()
 
   const stats = [
-    { label: 'SESSIONS', value: String(wrapped.sessions) },
-    { label: 'TOP COACH', value: wrapped.coach },
+    { label: 'WATER SESSIONS', value: String(wrapped.waterSessions) },
+    { label: 'COACHES', value: String(wrapped.coaches.length) },
     { label: 'YOUR BOAT', value: wrapped.boat },
   ]
   stats.forEach((stat, index) => {
@@ -126,7 +165,7 @@ async function createWrappedCard(): Promise<Blob> {
 
   context.fillStyle = '#ffffff'
   context.font = '800 44px Arial, "Noto Sans TC", sans-serif'
-  context.fillText('我們合理懷疑，你住在這裡。', 72, 1548)
+  context.fillText(wrapped.titleCopy, 72, 1548)
   context.fillStyle = 'rgba(255,255,255,0.54)'
   context.font = '500 31px Arial, "Noto Sans TC", sans-serif'
   context.fillText('RIDE TOGETHER.  ES WAKE SCHOOL', 72, 1620)
@@ -186,10 +225,15 @@ function ScrollHint({ onNext }: { onNext: () => void }) {
 function WrappedStory() {
   const [generating, setGenerating] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
   const [shareMessage, setShareMessage] = useState<string | null>(null)
+  const [shareStyle, setShareStyle] = useState<'type' | 'photo'>('type')
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [photoZoom, setPhotoZoom] = useState(1)
+  const [photoPositionY, setPhotoPositionY] = useState(50)
   const [activePanel, setActivePanel] = useState(0)
   const panelRefs = useRef<Array<HTMLElement | null>>([])
-  const animatedMinutes = useCountUp(wrapped.totalMinutes, activePanel === 1)
+  const animatedMinutes = useCountUp(wrapped.waterMinutes, activePanel === 1)
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
@@ -226,13 +270,50 @@ function WrappedStory() {
   }
 
   async function buildPreview(): Promise<{ blob: Blob; url: string }> {
-    const blob = await createWrappedCard()
+    if (shareStyle === 'photo' && !photoUrl) {
+      throw new Error('請先從手機選擇一張照片。')
+    }
+    const blob = await createWrappedCard({
+      photoUrl: shareStyle === 'photo' ? photoUrl : null,
+      photoZoom,
+      photoPositionY,
+    })
     const url = URL.createObjectURL(blob)
+    setPreviewBlob(blob)
     setPreviewUrl((current) => {
       if (current) URL.revokeObjectURL(current)
       return url
     })
     return { blob, url }
+  }
+
+  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return
+      setPhotoUrl(reader.result)
+      setPhotoZoom(1)
+      setPhotoPositionY(50)
+      setShareStyle('photo')
+      setShareMessage(null)
+    }
+    reader.onerror = () => setShareMessage('照片讀取失敗，請重新選擇。')
+    reader.readAsDataURL(file)
+    event.target.value = ''
+  }
+
+  async function openNativeShare(blob: Blob): Promise<boolean> {
+    const file = new File([blob], `es-wake-${wrapped.year}-ming.png`, { type: 'image/png' })
+    const shareData = {
+      files: [file],
+      title: `Ming's ${wrapped.year} ES Wake`,
+      text: `我的 ${wrapped.year} ES Wake 年度稱號：${wrapped.title}`,
+    }
+    if (typeof navigator.share !== 'function' || !navigator.canShare?.(shareData)) return false
+    await navigator.share(shareData)
+    return true
   }
 
   async function handlePreview() {
@@ -254,15 +335,7 @@ function WrappedStory() {
     setShareMessage(null)
     try {
       const { blob } = await buildPreview()
-      const file = new File([blob], `es-wake-${wrapped.year}-ming.png`, { type: 'image/png' })
-      const shareData = {
-        files: [file],
-        title: `Ming's ${wrapped.year} ES Wake`,
-        text: `我的 ${wrapped.year} ES Wake 年度稱號：${wrapped.title}`,
-      }
-      if (typeof navigator.share === 'function' && navigator.canShare?.(shareData)) {
-        await navigator.share(shareData)
-      } else {
+      if (!await openNativeShare(blob)) {
         setShareMessage('此瀏覽器不支援直接分享，請長按圖片儲存。')
       }
     } catch (error) {
@@ -270,6 +343,20 @@ function WrappedStory() {
       setShareMessage(error instanceof Error ? error.message : '分享失敗，請改用儲存圖片。')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  async function handleSaveFromPreview() {
+    if (!previewBlob) return
+    triggerHaptic('light')
+    setShareMessage(null)
+    try {
+      if (!await openNativeShare(previewBlob)) {
+        setShareMessage('請長按上方圖片，選擇「儲存圖片」。')
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      setShareMessage('請長按上方圖片，選擇「儲存圖片」。')
     }
   }
 
@@ -295,6 +382,7 @@ function WrappedStory() {
           display: grid;
           grid-template-columns: repeat(${PANEL_COUNT}, 1fr);
           gap: 5px;
+          mix-blend-mode: difference;
         }
         .wrapped-progress button {
           height: 3px;
@@ -390,6 +478,21 @@ function WrappedStory() {
           font-size: 17px;
           line-height: 1.55;
         }
+        .wrapped-footnote {
+          display: block;
+          margin-top: 24px;
+          color: rgba(255,255,255,.4);
+          font: 700 11px/1.4 Arial, sans-serif;
+          letter-spacing: .12em;
+        }
+        .wrapped-crew-secondary {
+          display: block;
+          margin-top: 14px;
+          color: rgba(255,255,255,.62);
+          font-size: .42em;
+          letter-spacing: -.02em;
+          line-height: 1.1;
+        }
         .wrapped-accent { color: var(--wrapped-accent); }
         .wrapped-cyan { color: var(--wrapped-cyan); }
         .wrapped-scroll-hint {
@@ -454,12 +557,31 @@ function WrappedStory() {
           border: 1px solid rgba(255,255,255,.17);
           border-radius: 24px;
           background:
-            radial-gradient(circle at 95% 15%, rgba(200,255,52,.2), transparent 32%),
+            radial-gradient(circle at 95% 15%, rgba(255,255,255,.12), transparent 32%),
             #050505;
           padding: 24px;
           display: flex;
           flex-direction: column;
           box-shadow: 0 24px 80px rgba(0,0,0,.5);
+          overflow: hidden;
+        }
+        .wrapped-final-card > :not(.wrapped-final-photo) { position: relative; z-index: 1; }
+        .wrapped-final-photo {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          filter: grayscale(1) contrast(1.05) brightness(.7);
+          z-index: 0;
+        }
+        .wrapped-final-card::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to bottom, rgba(0,0,0,.54), rgba(0,0,0,.16) 42%, rgba(0,0,0,.84));
+          pointer-events: none;
+          z-index: 0;
         }
         .wrapped-final-card .wrapped-brand img { width: 28px; height: 28px; }
         .wrapped-final-name {
@@ -495,6 +617,80 @@ function WrappedStory() {
         }
         .wrapped-final-stats strong { display: block; font-size: 20px; line-height: 1; }
         .wrapped-final-stats span { display: block; margin-top: 6px; color: rgba(255,255,255,.48); font-size: 9px; letter-spacing: .1em; }
+        .wrapped-final-signoff {
+          margin-top: 20px;
+          color: rgba(255,255,255,.74);
+          font: 800 10px/1 Arial, sans-serif;
+          letter-spacing: .14em;
+        }
+        .wrapped-share-editor {
+          position: relative;
+          z-index: 2;
+          width: min(100%, 390px);
+          margin: 0 auto 12px;
+        }
+        .wrapped-style-switch {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 6px;
+          padding: 4px;
+          border: 1px solid rgba(255,255,255,.14);
+          border-radius: 999px;
+          background: rgba(255,255,255,.06);
+        }
+        .wrapped-style-switch button {
+          padding: 9px 12px;
+          border: 0;
+          border-radius: 999px;
+          background: transparent;
+          color: rgba(255,255,255,.5);
+          font: 800 10px/1 Arial, sans-serif;
+          letter-spacing: .12em;
+        }
+        .wrapped-style-switch button[data-active="true"] {
+          background: #fff;
+          color: #050505;
+        }
+        .wrapped-photo-controls {
+          display: grid;
+          grid-template-columns: auto 1fr;
+          gap: 8px 12px;
+          align-items: center;
+          margin-top: 10px;
+          color: rgba(255,255,255,.58);
+          font-size: 11px;
+        }
+        .wrapped-photo-picker {
+          display: block;
+          grid-column: 1 / -1;
+          padding: 10px 14px;
+          border: 1px solid rgba(255,255,255,.18);
+          border-radius: 999px;
+          color: #fff;
+          text-align: center;
+          font-size: 12px;
+          font-weight: 750;
+          cursor: pointer;
+        }
+        .wrapped-photo-picker input { display: none; }
+        .wrapped-photo-controls input[type="range"] {
+          width: 100%;
+          accent-color: #fff;
+        }
+        .wrapped-title-panel {
+          background: #f7f7f5;
+          color: #050505;
+        }
+        .wrapped-title-panel::after {
+          border-color: rgba(0,0,0,.13);
+          box-shadow: 0 0 0 70px rgba(0,0,0,.035), 0 0 0 140px rgba(0,0,0,.02);
+        }
+        .wrapped-title-panel .wrapped-brand img { filter: invert(1); }
+        .wrapped-title-panel .wrapped-kicker,
+        .wrapped-title-panel .wrapped-cyan { color: #050505; }
+        .wrapped-title-panel .wrapped-subtitle { color: rgba(0,0,0,.58); }
+        .wrapped-title-panel .wrapped-subtitle strong { color: #050505 !important; }
+        .wrapped-title-panel .wrapped-scroll-hint { color: rgba(0,0,0,.42); }
         .wrapped-actions {
           position: relative;
           z-index: 1;
@@ -589,13 +785,12 @@ function WrappedStory() {
       >
         <BrandMark />
         <div data-reveal>
-          <div className="wrapped-kicker">2026 · So far</div>
+          <div className="wrapped-kicker">ES Wake · 2026</div>
           <h1 className="wrapped-display">
             MING’S<br />
             YEAR ON<br />
             <span className="wrapped-accent">THE WATER.</span>
           </h1>
-          <p className="wrapped-subtitle">你今年留下的，不只是浪花。</p>
         </div>
         <div data-reveal="late"><ScrollHint onNext={() => goToPanel(1)} /></div>
       </section>
@@ -608,16 +803,18 @@ function WrappedStory() {
       >
         <BrandMark />
         <div data-reveal>
-          <div className="wrapped-kicker">Your time</div>
+          <div className="wrapped-kicker">Time on the water</div>
           <h2 className="wrapped-display wrapped-accent">
             {animatedMinutes.toLocaleString('en-US')}
           </h2>
           <p className="wrapped-subtitle">
             MINUTES<br />
             <strong style={{ color: '#fff' }}>
-              {wrapped.hours} 小時 {wrapped.remainingMinutes} 分鐘
+              {wrapped.waterHours} HOURS · {wrapped.waterRemainingMinutes} MINUTES
             </strong>
-            <br />都留在你喜歡的地方。
+            <span className="wrapped-footnote">
+              LAND TRAINING / {wrapped.landMinutes.toLocaleString('en-US')} MIN
+            </span>
           </p>
         </div>
         <div data-reveal="late"><ScrollHint onNext={() => goToPanel(2)} /></div>
@@ -631,18 +828,14 @@ function WrappedStory() {
       >
         <BrandMark />
         <div data-reveal>
-          <div className="wrapped-kicker">Your #1 coach</div>
-          <h2 className="wrapped-display wrapped-cyan">{wrapped.coach}</h2>
-          <p className="wrapped-subtitle">
-            一起訓練 {wrapped.coachMinutes.toLocaleString('en-US')} 分鐘，默契占了全年
-            {' '}<strong style={{ color: '#fff' }}>{wrapped.coachPercent}%</strong>。
-          </p>
-          <div className="wrapped-ratio">
-            <div className="wrapped-ratio-line">
-              <span style={{ width: `${wrapped.coachPercent}%`, background: CYAN }} />
-            </div>
-            <div className="wrapped-ratio-label"><span>TOGETHER</span><span>{wrapped.coachPercent}%</span></div>
-          </div>
+          <div className="wrapped-kicker">You didn’t ride alone.</div>
+          <h2 className="wrapped-display wrapped-cyan">
+            {wrapped.coaches[0]}
+            <span className="wrapped-crew-secondary">
+              {wrapped.coaches.slice(1).join(' · ')}
+            </span>
+          </h2>
+          <p className="wrapped-subtitle">YOUR 2026 COACHES</p>
         </div>
         <div data-reveal="late"><ScrollHint onNext={() => goToPanel(3)} /></div>
       </section>
@@ -655,16 +848,16 @@ function WrappedStory() {
       >
         <BrandMark />
         <div data-reveal>
-          <div className="wrapped-kicker">Your boat</div>
+          <div className="wrapped-kicker">Your ride</div>
           <h2 className="wrapped-display">{wrapped.boat}</h2>
           <p className="wrapped-subtitle">
-            {wrapped.boatMinutes.toLocaleString('en-US')} 分鐘。你的年度命定船隻，占總時數
-            {' '}<strong className="wrapped-accent">{wrapped.boatPercent}%</strong>。
+            <strong style={{ color: '#fff' }}>
+              {wrapped.boatMinutes.toLocaleString('en-US')} MINUTES
+            </strong>
+            <span className="wrapped-footnote">
+              {wrapped.boatPercent}% OF YOUR WATER TIME
+            </span>
           </p>
-          <div className="wrapped-ratio">
-            <div className="wrapped-ratio-line"><span style={{ width: `${wrapped.boatPercent}%` }} /></div>
-            <div className="wrapped-ratio-label"><span>G21 TIME</span><span>{wrapped.boatPercent}%</span></div>
-          </div>
         </div>
         <div data-reveal="late"><ScrollHint onNext={() => goToPanel(4)} /></div>
       </section>
@@ -673,15 +866,19 @@ function WrappedStory() {
         ref={panelRef(4)}
         data-panel-index="4"
         data-active={activePanel === 4}
-        className="wrapped-panel"
+        className="wrapped-panel wrapped-title-panel"
       >
         <BrandMark />
         <div data-reveal>
           <div className="wrapped-kicker">Your 2026 title</div>
-          <h2 className="wrapped-display small wrapped-cyan">ES<br />地縛靈</h2>
+          <h2 className="wrapped-display small wrapped-cyan" style={{ whiteSpace: 'pre-line' }}>
+            {wrapped.title.replace(' ', '\n')}
+          </h2>
           <p className="wrapped-subtitle">
-            {wrapped.sessions} 次紀錄，最投入的月份是 {wrapped.peakMonth}。
-            <br /><strong style={{ color: '#fff' }}>我們合理懷疑，你住在這裡。</strong>
+            <strong>{wrapped.titleCopy}</strong>
+            <span className="wrapped-footnote" style={{ color: 'rgba(0,0,0,.42)' }}>
+              {wrapped.sessions} TRAINING SESSIONS
+            </span>
           </p>
         </div>
         <div data-reveal="late"><ScrollHint onNext={() => goToPanel(5)} /></div>
@@ -695,19 +892,78 @@ function WrappedStory() {
       >
         <BrandMark />
         <div className="wrapped-final-card" data-reveal>
+          {shareStyle === 'photo' && photoUrl && (
+            <img
+              className="wrapped-final-photo"
+              src={photoUrl}
+              alt=""
+              style={{
+                objectPosition: `50% ${photoPositionY}%`,
+                transform: `scale(${photoZoom})`,
+              }}
+            />
+          )}
           <BrandMark />
           <div className="wrapped-final-name">{wrapped.name}</div>
           <div className="wrapped-final-title">年度稱號｜{wrapped.title}</div>
           <div className="wrapped-final-minutes">
-            {wrapped.totalMinutes.toLocaleString('en-US')}
+            {wrapped.waterMinutes.toLocaleString('en-US')}
           </div>
           <div className="wrapped-final-label">MINUTES ON THE WATER</div>
           <div className="wrapped-final-stats">
-            <div><strong>{wrapped.sessions}</strong><span>SESSIONS</span></div>
+            <div><strong>{wrapped.waterSessions}</strong><span>WATER SESSIONS</span></div>
             <div><strong>{wrapped.boat}</strong><span>YOUR BOAT</span></div>
           </div>
+          <div className="wrapped-final-signoff">RIDE TOGETHER.</div>
         </div>
         <div data-reveal="late">
+          <div className="wrapped-share-editor">
+            <div className="wrapped-style-switch" aria-label="選擇分享卡樣式">
+              <button
+                type="button"
+                data-active={shareStyle === 'type'}
+                onClick={() => setShareStyle('type')}
+              >
+                TYPE
+              </button>
+              <button
+                type="button"
+                data-active={shareStyle === 'photo'}
+                onClick={() => setShareStyle('photo')}
+              >
+                PHOTO
+              </button>
+            </div>
+            {shareStyle === 'photo' && (
+              <div className="wrapped-photo-controls">
+                <label className="wrapped-photo-picker">
+                  {photoUrl ? '更換照片' : '從手機選擇照片'}
+                  <input type="file" accept="image/*" onChange={handlePhotoChange} />
+                </label>
+                {photoUrl && (
+                  <>
+                    <span>縮放</span>
+                    <input
+                      type="range"
+                      min="1"
+                      max="2"
+                      step="0.05"
+                      value={photoZoom}
+                      onChange={event => setPhotoZoom(Number(event.target.value))}
+                    />
+                    <span>位置</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={photoPositionY}
+                      onChange={event => setPhotoPositionY(Number(event.target.value))}
+                    />
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <div className="wrapped-actions">
             <button className="wrapped-action primary" type="button" disabled={generating} onClick={() => void handleShare()}>
               {generating ? '產生中…' : '分享打卡卡片'}
@@ -724,11 +980,12 @@ function WrappedStory() {
       {previewUrl && (
         <div className="wrapped-preview" role="dialog" aria-modal="true" aria-label="年度打卡卡片預覽">
           <img src={previewUrl} alt="Ming 的 2026 ES Wake 年度打卡卡片" />
-          <p>可長按圖片儲存，或使用下方按鈕下載。</p>
+          <p>可長按圖片儲存，或開啟手機的分享／儲存選單。</p>
           <div className="wrapped-preview-actions">
-            <a href={previewUrl} download={`es-wake-${wrapped.year}-ming.png`}>下載圖片</a>
+            <button type="button" onClick={() => void handleSaveFromPreview()}>儲存／分享</button>
             <button type="button" onClick={() => setPreviewUrl(null)}>關閉</button>
           </div>
+          {shareMessage && <p className="wrapped-message">{shareMessage}</p>}
         </div>
       )}
     </main>
