@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ES_BRAND } from '../../lib/esBrandTokens'
 import { triggerHaptic } from '../../utils/haptic'
@@ -10,8 +10,9 @@ import { resolveRuntimeLiffId } from './liffUrl'
 import { useLiffMember } from './useLiffMember'
 
 const MING_MEMBER_ID = '3ba83648-1f69-418a-8939-76a83e7014cb'
+const BACKGROUND = '#050505'
 const ACCENT = '#ffffff'
-const CYAN = '#72c7d8'
+const CYAN = '#37d9f0'
 const PANEL_COUNT = 6
 
 const wrapped = {
@@ -56,6 +57,7 @@ function roundedRect(
 
 interface WrappedCardOptions {
   photoUrl?: string | null
+  photoOffsetY?: number
 }
 
 async function loadImage(src: string): Promise<HTMLImageElement> {
@@ -74,17 +76,17 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
 
   await document.fonts?.ready
 
-  context.fillStyle = '#050505'
+  context.fillStyle = BACKGROUND
   context.fillRect(0, 0, canvas.width, canvas.height)
 
   const hasPhoto = Boolean(options.photoUrl)
   if (options.photoUrl) {
     const photo = await loadImage(options.photoUrl)
-    const scale = Math.max(canvas.width / photo.naturalWidth, canvas.height / photo.naturalHeight)
+    const scale = Math.max(canvas.width / photo.naturalWidth, canvas.height / photo.naturalHeight) * 1.1
     const width = photo.naturalWidth * scale
     const height = photo.naturalHeight * scale
     const x = (canvas.width - width) / 2
-    const y = (canvas.height - height) / 2
+    const y = (canvas.height - height) / 2 + (options.photoOffsetY ?? 0) * canvas.height * 0.05
 
     context.save()
     context.filter = 'saturate(.96) contrast(1.04) brightness(.9)'
@@ -101,7 +103,7 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
   }
 
   if (!hasPhoto) {
-    context.strokeStyle = 'rgba(255, 255, 255, 0.18)'
+    context.strokeStyle = 'rgba(55, 217, 240, 0.22)'
     context.lineWidth = 4
     for (let radius = 180; radius <= 700; radius += 104) {
       context.beginPath()
@@ -113,7 +115,7 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
   context.fillStyle = ACCENT
   roundedRect(context, 70, 72, 250, 58, 29)
   context.fill()
-  context.fillStyle = '#050505'
+  context.fillStyle = BACKGROUND
   context.font = '700 27px Arial, sans-serif'
   context.fillText('ES WAKE · 2026', 92, 111)
 
@@ -123,17 +125,17 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
     await logo.decode()
     context.drawImage(logo, 894, 68, 116, 116)
   } catch {
-    context.fillStyle = '#ffffff'
+    context.fillStyle = ACCENT
     context.font = '800 32px Arial, sans-serif'
     context.fillText('ES WAKE', 846, 112)
   }
 
   if (hasPhoto) {
-    context.fillStyle = '#ffffff'
+    context.fillStyle = ACCENT
     context.font = '800 31px Arial, "Noto Sans TC", sans-serif'
     context.fillText(`${wrapped.name} · ES ${wrapped.year}`, 72, 1445)
 
-    context.fillStyle = '#ffffff'
+    context.fillStyle = ACCENT
     context.font = '900 190px Arial, sans-serif'
     context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, 1645)
     context.fillStyle = 'rgba(255,255,255,0.66)'
@@ -144,13 +146,13 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
     context.font = '800 30px Arial, "Noto Sans TC", sans-serif'
     context.fillText(`年度稱號｜${wrapped.title}`, 72, 1805)
   } else {
-    context.fillStyle = '#ffffff'
+    context.fillStyle = ACCENT
     context.font = '900 118px Arial, "Noto Sans TC", sans-serif'
     context.fillText(wrapped.name, 70, 350)
     context.fillStyle = CYAN
     context.font = '800 54px Arial, "Noto Sans TC", sans-serif'
     context.fillText(`年度稱號｜${wrapped.title}`, 76, 438)
-    context.fillStyle = '#ffffff'
+    context.fillStyle = ACCENT
     context.font = '900 230px Arial, sans-serif'
     context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, 790)
     context.fillStyle = 'rgba(255,255,255,0.64)'
@@ -175,7 +177,7 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
       context.fillText(stat.label, x, 1234)
     })
 
-    context.fillStyle = '#ffffff'
+    context.fillStyle = ACCENT
     context.font = '800 44px Arial, "Noto Sans TC", sans-serif'
     context.fillText(wrapped.titleCopy, 72, 1548)
     context.fillStyle = 'rgba(255,255,255,0.54)'
@@ -241,8 +243,14 @@ function WrappedStory() {
   const [shareMessage, setShareMessage] = useState<string | null>(null)
   const [shareStyle, setShareStyle] = useState<'type' | 'photo'>('type')
   const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [photoOffsetY, setPhotoOffsetY] = useState(0)
   const [activePanel, setActivePanel] = useState(0)
   const panelRefs = useRef<Array<HTMLElement | null>>([])
+  const photoDragRef = useRef<{
+    pointerId: number
+    startY: number
+    startOffset: number
+  } | null>(null)
   const animatedMinutes = useCountUp(wrapped.waterMinutes, activePanel === 1)
 
   useEffect(() => () => {
@@ -285,6 +293,7 @@ function WrappedStory() {
     }
     const blob = await createWrappedCard({
       photoUrl: shareStyle === 'photo' ? photoUrl : null,
+      photoOffsetY,
     })
     const url = URL.createObjectURL(blob)
     setPreviewBlob(blob)
@@ -302,12 +311,39 @@ function WrappedStory() {
     reader.onload = () => {
       if (typeof reader.result !== 'string') return
       setPhotoUrl(reader.result)
+      setPhotoOffsetY(0)
       setShareStyle('photo')
       setShareMessage(null)
     }
     reader.onerror = () => setShareMessage('照片讀取失敗，請重新選擇。')
     reader.readAsDataURL(file)
     event.target.value = ''
+  }
+
+  function handlePhotoPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (shareStyle !== 'photo' || !photoUrl) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    photoDragRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startOffset: photoOffsetY,
+    }
+  }
+
+  function handlePhotoPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = photoDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    const height = Math.max(event.currentTarget.getBoundingClientRect().height, 1)
+    const nextOffset = drag.startOffset + ((event.clientY - drag.startY) / height) * 4
+    setPhotoOffsetY(Math.max(-1, Math.min(1, nextOffset)))
+  }
+
+  function handlePhotoPointerEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    if (photoDragRef.current?.pointerId !== event.pointerId) return
+    photoDragRef.current = null
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
   }
 
   async function openNativeShare(blob: Blob): Promise<boolean> {
@@ -370,9 +406,10 @@ function WrappedStory() {
     <main className="wrapped-root">
       <style>{`
         .wrapped-root {
+          --wrapped-bg: ${BACKGROUND};
           --wrapped-accent: ${ACCENT};
           --wrapped-cyan: ${CYAN};
-          background: #050505;
+          background: var(--wrapped-bg);
           color: #fff;
           font-family: var(--font-ui);
           min-height: 100svh;
@@ -388,7 +425,6 @@ function WrappedStory() {
           display: grid;
           grid-template-columns: repeat(${PANEL_COUNT}, 1fr);
           gap: 5px;
-          mix-blend-mode: difference;
         }
         .wrapped-progress button {
           height: 3px;
@@ -439,10 +475,13 @@ function WrappedStory() {
           position: absolute;
           width: 440px;
           height: 440px;
-          border: 1px solid rgba(114,199,216,.26);
+          border: 1px solid rgba(55,217,240,.22);
           border-radius: 50%;
           right: -260px;
           top: 18%;
+          box-shadow:
+            0 0 0 74px rgba(55,217,240,.045),
+            0 0 0 148px rgba(55,217,240,.022);
           pointer-events: none;
         }
         .wrapped-brand {
@@ -503,8 +542,8 @@ function WrappedStory() {
         .wrapped-water-panel .wrapped-accent { color: var(--wrapped-cyan); }
         .wrapped-boat-panel {
           background:
-            radial-gradient(circle at 100% 25%, rgba(114,199,216,.08), transparent 42%),
-            #050505;
+            radial-gradient(circle at 100% 25%, rgba(55,217,240,.07), transparent 42%),
+            var(--wrapped-bg);
         }
         .wrapped-scroll-hint {
           position: relative;
@@ -573,8 +612,8 @@ function WrappedStory() {
           border: 1px solid rgba(255,255,255,.17);
           border-radius: 18px;
           background:
-            radial-gradient(circle at 95% 15%, rgba(255,255,255,.12), transparent 32%),
-            #050505;
+            radial-gradient(circle at 95% 15%, rgba(55,217,240,.13), transparent 32%),
+            var(--wrapped-bg);
           padding: 24px;
           display: flex;
           flex-direction: column;
@@ -608,7 +647,30 @@ function WrappedStory() {
             rgba(0,0,0,.94)
           );
         }
-        .wrapped-final-card .wrapped-brand img { width: 28px; height: 28px; }
+        .wrapped-final-card.has-photo {
+          cursor: grab;
+          touch-action: none;
+          user-select: none;
+        }
+        .wrapped-final-card.has-photo:active { cursor: grabbing; }
+        .wrapped-final-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .wrapped-final-card-header span {
+          padding: 7px 11px;
+          border-radius: 999px;
+          background: #fff;
+          color: var(--wrapped-bg);
+          font: 800 9px/1 Arial, sans-serif;
+          letter-spacing: .04em;
+        }
+        .wrapped-final-card-header img {
+          width: 32px;
+          height: 32px;
+          object-fit: contain;
+        }
         .wrapped-final-name {
           margin-top: 22%;
           font: 900 clamp(44px, 14vw, 70px)/.9 Arial Black, Arial, sans-serif;
@@ -634,19 +696,27 @@ function WrappedStory() {
         }
         .wrapped-final-stats {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(3, 1fr);
           gap: 12px;
           margin-top: 22px;
-          padding-top: 18px;
-          border-top: 1px solid rgba(255,255,255,.15);
+          padding: 18px 14px;
+          border-radius: 14px;
+          background: rgba(255,255,255,.1);
         }
         .wrapped-final-stats strong { display: block; font-size: 20px; line-height: 1; }
         .wrapped-final-stats span { display: block; margin-top: 6px; color: rgba(255,255,255,.48); font-size: 9px; letter-spacing: .1em; }
         .wrapped-final-signoff {
-          margin-top: 20px;
+          margin-top: 12px;
           color: rgba(255,255,255,.74);
           font: 800 10px/1 Arial, sans-serif;
           letter-spacing: .14em;
+        }
+        .wrapped-final-copy {
+          margin-top: 16px;
+          color: rgba(255,255,255,.78);
+          font-size: 11px;
+          font-weight: 750;
+          line-height: 1.45;
         }
         .wrapped-final-photo-content {
           position: relative;
@@ -670,6 +740,13 @@ function WrappedStory() {
           z-index: 2;
           width: min(100%, 390px);
           margin: 0 auto 12px;
+        }
+        .wrapped-photo-position-hint {
+          margin: 0 0 9px;
+          color: rgba(255,255,255,.48);
+          text-align: center;
+          font-size: 11px;
+          letter-spacing: .03em;
         }
         .wrapped-photo-controls {
           display: grid;
@@ -699,19 +776,31 @@ function WrappedStory() {
           font-weight: 750;
         }
         .wrapped-title-panel {
-          background: #f7f7f5;
-          color: #050505;
+          background: var(--wrapped-bg);
+          color: #fff;
         }
         .wrapped-title-panel::after {
-          border-color: rgba(0,0,0,.13);
-          box-shadow: 0 0 0 70px rgba(0,0,0,.035), 0 0 0 140px rgba(0,0,0,.02);
+          border-color: rgba(55,217,240,.38);
+          box-shadow:
+            0 0 0 74px rgba(55,217,240,.07),
+            0 0 0 148px rgba(55,217,240,.035);
         }
-        .wrapped-title-panel .wrapped-brand img { filter: invert(1); }
-        .wrapped-title-panel .wrapped-kicker { color: #050505; }
-        .wrapped-title-panel .wrapped-cyan { color: #397b89; }
-        .wrapped-title-panel .wrapped-subtitle { color: rgba(0,0,0,.58); }
-        .wrapped-title-panel .wrapped-subtitle strong { color: #050505 !important; }
-        .wrapped-title-panel .wrapped-scroll-hint { color: rgba(0,0,0,.42); }
+        .wrapped-title-panel .wrapped-kicker { color: rgba(255,255,255,.58); }
+        .wrapped-title-panel .wrapped-cyan { color: var(--wrapped-cyan); }
+        .wrapped-title-panel .wrapped-subtitle { color: rgba(255,255,255,.68); }
+        .wrapped-title-panel .wrapped-subtitle strong { color: #fff; }
+        .wrapped-title-panel .wrapped-scroll-hint { color: rgba(255,255,255,.38); }
+        .wrapped-title-word {
+          clip-path: inset(0 0 100% 0);
+          transform: translate3d(0, 18px, 0);
+        }
+        .wrapped-title-panel[data-active="true"] .wrapped-title-word {
+          animation: wrapped-title-reveal .68s .12s cubic-bezier(.16,.8,.24,1) both;
+        }
+        @keyframes wrapped-title-reveal {
+          from { clip-path: inset(0 0 100% 0); transform: translate3d(0, 18px, 0); }
+          to { clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); }
+        }
         .wrapped-actions {
           position: relative;
           z-index: 1;
@@ -778,8 +867,13 @@ function WrappedStory() {
             transform: none;
           }
           .wrapped-panel[data-active="true"] [data-reveal],
+          .wrapped-title-panel[data-active="true"] .wrapped-title-word,
           .wrapped-scroll-hint span {
             animation: none;
+          }
+          .wrapped-title-word {
+            clip-path: none;
+            transform: none;
           }
           .wrapped-progress button::after { transition: none; }
         }
@@ -892,12 +986,12 @@ function WrappedStory() {
         <BrandMark />
         <div data-reveal>
           <div className="wrapped-kicker">Your 2026 title</div>
-          <h2 className="wrapped-display small wrapped-cyan" style={{ whiteSpace: 'pre-line' }}>
+          <h2 className="wrapped-display small wrapped-cyan wrapped-title-word" style={{ whiteSpace: 'pre-line' }}>
             {wrapped.title.replace(' ', '\n')}
           </h2>
           <p className="wrapped-subtitle">
             <strong>{wrapped.titleCopy}</strong>
-            <span className="wrapped-footnote" style={{ color: 'rgba(0,0,0,.42)' }}>
+            <span className="wrapped-footnote">
               {wrapped.sessions} TRAINING SESSIONS
             </span>
           </p>
@@ -915,15 +1009,26 @@ function WrappedStory() {
         <div
           className={`wrapped-final-card ${shareStyle === 'photo' && photoUrl ? 'has-photo' : ''}`}
           data-reveal
+          onPointerDown={handlePhotoPointerDown}
+          onPointerMove={handlePhotoPointerMove}
+          onPointerUp={handlePhotoPointerEnd}
+          onPointerCancel={handlePhotoPointerEnd}
         >
           {shareStyle === 'photo' && photoUrl && (
             <img
               className="wrapped-final-photo"
               src={photoUrl}
               alt=""
+              draggable={false}
+              style={{
+                transform: `translate3d(0, ${photoOffsetY * 5}%, 0) scale(1.1)`,
+              }}
             />
           )}
-          <BrandMark />
+          <div className="wrapped-final-card-header">
+            <span>ES WAKE · {wrapped.year}</span>
+            <img src={ES_BRAND.logoWhite} alt="ES Wake" />
+          </div>
           {shareStyle === 'photo' && photoUrl ? (
             <div className="wrapped-final-photo-content">
               <div className="wrapped-final-photo-kicker">{wrapped.name} · ES {wrapped.year}</div>
@@ -943,14 +1048,19 @@ function WrappedStory() {
               <div className="wrapped-final-label">MINUTES ON THE WATER</div>
               <div className="wrapped-final-stats">
                 <div><strong>{wrapped.waterSessions}</strong><span>WATER SESSIONS</span></div>
+                <div><strong>{wrapped.coaches.length}</strong><span>COACHES</span></div>
                 <div><strong>{wrapped.boat}</strong><span>YOUR BOAT</span></div>
               </div>
+              <div className="wrapped-final-copy">{wrapped.titleCopy}</div>
               <div className="wrapped-final-signoff">RIDE TOGETHER.</div>
             </>
           )}
         </div>
         <div data-reveal="late">
           <div className="wrapped-share-editor">
+            {photoUrl && (
+              <p className="wrapped-photo-position-hint">上下拖曳照片調整位置</p>
+            )}
             <div className="wrapped-photo-controls">
               <label className="wrapped-photo-picker">
                 {photoUrl ? '更換照片' : '加入照片'}
@@ -962,6 +1072,7 @@ function WrappedStory() {
                   type="button"
                   onClick={() => {
                     setPhotoUrl(null)
+                    setPhotoOffsetY(0)
                     setShareStyle('type')
                     setShareMessage(null)
                   }}
@@ -1031,25 +1142,64 @@ export function MingWrappedDemoBanner({ memberId }: { memberId: string }) {
         search: location.search,
         hash: location.hash,
       }}
+      aria-label="開啟 Ming 的 2026 年度回顧"
       style={{
         display: 'block',
+        position: 'relative',
+        overflow: 'hidden',
         margin: '18px 18px 0',
-        padding: '22px',
+        padding: '22px 22px 24px',
         borderRadius: 22,
-        background: '#050505',
+        border: `1px solid rgba(55,217,240,.28)`,
+        background: `radial-gradient(circle at 100% 0%, rgba(55,217,240,.17), transparent 46%), ${BACKGROUND}`,
         color: '#fff',
         textDecoration: 'none',
-        boxShadow: '0 12px 32px rgba(0,0,0,.16)',
+        boxShadow: '0 14px 36px rgba(0,0,0,.2)',
       }}
     >
-      <div style={{ color: CYAN, font: '800 11px/1 Arial, sans-serif', letterSpacing: '.14em' }}>
-        2026 SO FAR
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          width: 178,
+          height: 178,
+          border: '1px solid rgba(55,217,240,.2)',
+          borderRadius: '50%',
+          right: -92,
+          top: -86,
+          boxShadow: '0 0 0 42px rgba(55,217,240,.04), 0 0 0 84px rgba(55,217,240,.02)',
+        }}
+      />
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 9 }}>
+        <img
+          src={ES_BRAND.logoWhite}
+          alt=""
+          style={{ width: 28, height: 28, objectFit: 'contain' }}
+        />
+        <div style={{ color: CYAN, font: '800 10px/1 Arial, sans-serif', letterSpacing: '.14em' }}>
+          ES WRAPPED · 2026
+        </div>
       </div>
-      <div style={{ marginTop: 13, fontSize: 27, fontWeight: 900, lineHeight: 1.08, letterSpacing: '-.04em' }}>
+      <div style={{ position: 'relative', marginTop: 20, fontSize: 29, fontWeight: 900, lineHeight: 1.02, letterSpacing: '-.05em' }}>
         MING’S YEAR<br />ON THE WATER.
       </div>
-      <div style={{ marginTop: 18, color: 'rgba(255,255,255,.62)', fontSize: 13 }}>
-        查看你的年度回顧 <span style={{ color: CYAN }}>→</span>
+      <div
+        style={{
+          position: 'relative',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 14,
+          marginTop: 22,
+          padding: '11px 16px',
+          borderRadius: 999,
+          background: CYAN,
+          color: BACKGROUND,
+          fontSize: 12,
+          fontWeight: 900,
+          letterSpacing: '.03em',
+        }}
+      >
+        開啟年度回顧 <span aria-hidden="true">→</span>
       </div>
     </Link>
   )
