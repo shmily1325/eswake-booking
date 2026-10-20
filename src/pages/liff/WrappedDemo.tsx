@@ -43,21 +43,60 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   })
 }
 
-function roundedRect(
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-) {
-  context.beginPath()
-  context.roundRect(x, y, width, height, radius)
-}
-
 interface WrappedCardOptions {
   photoUrl?: string | null
   photoOffsetY?: number
+}
+
+function splitWrappedTitle(title: string): string[] {
+  const normalized = title.trim().replace(/\s+/g, ' ')
+  const compact = normalized.replace(/\s/g, '')
+  if (compact.length <= 5 || (normalized.includes(' ') && compact.length <= 7)) {
+    return [normalized]
+  }
+
+  const naturalEndings = ['營業中', '收藏家', '練習生', '兩棲類']
+  const ending = naturalEndings.find(candidate => compact.endsWith(candidate))
+  if (ending && compact.length > ending.length) {
+    return [
+      compact.slice(0, -ending.length),
+      ending,
+    ]
+  }
+
+  const breakAt = Math.ceil(compact.length / 2)
+  return [
+    compact.slice(0, breakAt),
+    compact.slice(breakAt),
+  ]
+}
+
+function drawWrappedTitle(
+  context: CanvasRenderingContext2D,
+  lines: string[],
+  options: {
+    bottomY: number
+    fontSize: number
+    lineHeight: number
+    maxWidth: number
+    x: number
+  },
+) {
+  let fontSize = options.fontSize
+  context.font = `900 ${fontSize}px Arial, "Noto Sans TC", sans-serif`
+  while (
+    fontSize > 72
+    && lines.some(line => context.measureText(line).width > options.maxWidth)
+  ) {
+    fontSize -= 4
+    context.font = `900 ${fontSize}px Arial, "Noto Sans TC", sans-serif`
+  }
+
+  const lineHeight = fontSize * options.lineHeight
+  const firstBaseline = options.bottomY - lineHeight * (lines.length - 1)
+  lines.forEach((line, index) => {
+    context.fillText(line, options.x, firstBaseline + index * lineHeight)
+  })
 }
 
 async function loadImage(src: string): Promise<HTMLImageElement> {
@@ -94,18 +133,19 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
     context.restore()
 
     const overlay = context.createLinearGradient(0, 0, 0, canvas.height)
-    overlay.addColorStop(0, 'rgba(0,0,0,.44)')
-    overlay.addColorStop(.52, 'rgba(0,0,0,.04)')
-    overlay.addColorStop(.7, 'rgba(0,0,0,.22)')
-    overlay.addColorStop(1, 'rgba(0,0,0,.94)')
+    overlay.addColorStop(0, 'rgba(0,0,0,.52)')
+    overlay.addColorStop(.28, 'rgba(0,0,0,.08)')
+    overlay.addColorStop(.48, 'rgba(0,0,0,.03)')
+    overlay.addColorStop(.68, 'rgba(0,0,0,.34)')
+    overlay.addColorStop(1, 'rgba(0,0,0,.96)')
     context.fillStyle = overlay
     context.fillRect(0, 0, canvas.width, canvas.height)
   }
 
   if (!hasPhoto) {
-    context.strokeStyle = 'rgba(55, 217, 240, 0.22)'
     context.lineWidth = 4
-    for (let radius = 180; radius <= 700; radius += 104) {
+    for (let radius = 180, index = 0; radius <= 700; radius += 104, index += 1) {
+      context.strokeStyle = `rgba(55, 217, 240, ${Math.max(.07, .2 - index * .025)})`
       context.beginPath()
       context.arc(970, 360, radius, 0, Math.PI * 2)
       context.stroke()
@@ -113,81 +153,87 @@ async function createWrappedCard(options: WrappedCardOptions = {}): Promise<Blob
   }
 
   context.fillStyle = ACCENT
-  roundedRect(context, 70, 72, 250, 58, 29)
-  context.fill()
-  context.fillStyle = BACKGROUND
   context.font = '700 27px Arial, sans-serif'
-  context.fillText('ES WAKE · 2026', 92, 111)
+  context.fillText('ES WAKE · 2026', 70, 111)
 
   try {
     const logo = new Image()
     logo.src = ES_BRAND.logoWhite
     await logo.decode()
-    context.drawImage(logo, 894, 68, 116, 116)
+    context.drawImage(logo, 910, 76, 100, 100)
   } catch {
     context.fillStyle = ACCENT
     context.font = '800 32px Arial, sans-serif'
     context.fillText('ES WAKE', 846, 112)
   }
 
-  if (hasPhoto) {
-    context.fillStyle = ACCENT
-    context.font = '800 31px Arial, "Noto Sans TC", sans-serif'
-    context.fillText(`${wrapped.name} · ES ${wrapped.year}`, 72, 1445)
+  const titleLines = splitWrappedTitle(wrapped.title)
 
-    context.fillStyle = ACCENT
-    context.font = '900 190px Arial, sans-serif'
-    context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, 1645)
-    context.fillStyle = 'rgba(255,255,255,0.66)'
-    context.font = '700 29px Arial, sans-serif'
-    context.fillText('MINUTES ON THE WATER', 72, 1702)
+  if (hasPhoto) {
+    const titleFontSize = titleLines.length > 1 ? 100 : 116
+    const titleTopY = 1490 - titleFontSize * .92 * (titleLines.length - 1)
+
+    context.fillStyle = 'rgba(255,255,255,.76)'
+    context.font = '800 29px Arial, "Noto Sans TC", sans-serif'
+    context.fillText(`${wrapped.name} · ${wrapped.year}`, 72, titleTopY - 66)
 
     context.fillStyle = CYAN
-    context.font = '800 30px Arial, "Noto Sans TC", sans-serif'
-    context.fillText(`年度稱號｜${wrapped.title}`, 72, 1805)
+    drawWrappedTitle(context, titleLines, {
+      x: 70,
+      bottomY: 1490,
+      fontSize: titleFontSize,
+      lineHeight: .92,
+      maxWidth: 940,
+    })
+
+    context.fillStyle = ACCENT
+    context.font = '900 168px Arial, sans-serif'
+    context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 62, 1700)
+    context.fillStyle = 'rgba(255,255,255,0.66)'
+    context.font = '700 27px Arial, sans-serif'
+    context.fillText('MINUTES ON THE WATER', 72, 1754)
   } else {
     context.fillStyle = ACCENT
-    context.font = '900 118px Arial, "Noto Sans TC", sans-serif'
-    context.fillText(wrapped.name, 70, 350)
-    context.fillStyle = CYAN
-    context.font = '800 54px Arial, "Noto Sans TC", sans-serif'
-    context.fillText(`年度稱號｜${wrapped.title}`, 76, 438)
-    context.fillStyle = ACCENT
-    context.font = '900 230px Arial, sans-serif'
-    context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, 790)
-    context.fillStyle = 'rgba(255,255,255,0.64)'
-    context.font = '700 38px Arial, sans-serif'
-    context.fillText('MINUTES ON THE WATER', 76, 862)
+    context.font = '900 108px Arial, "Noto Sans TC", sans-serif'
+    context.fillText(wrapped.name, 70, 310)
 
-    context.fillStyle = 'rgba(255,255,255,0.12)'
-    roundedRect(context, 70, 1010, 940, 360, 42)
-    context.fill()
+    context.fillStyle = CYAN
+    drawWrappedTitle(context, titleLines, {
+      x: 70,
+      bottomY: titleLines.length > 1 ? 590 : 500,
+      fontSize: titleLines.length > 1 ? 124 : 142,
+      lineHeight: .9,
+      maxWidth: 940,
+    })
+
+    context.fillStyle = ACCENT
+    context.font = '900 220px Arial, sans-serif'
+    context.fillText(wrapped.waterMinutes.toLocaleString('en-US'), 58, 900)
+    context.fillStyle = 'rgba(255,255,255,0.64)'
+    context.font = '700 34px Arial, sans-serif'
+    context.fillText('MINUTES ON THE WATER', 72, 960)
+
     const stats = [
       { label: 'WATER SESSIONS', value: String(wrapped.waterSessions) },
       { label: 'COACHES', value: String(wrapped.coaches.length) },
       { label: 'YOUR BOAT', value: wrapped.boat },
     ]
     stats.forEach((stat, index) => {
-      const x = 112 + index * 300
-      context.fillStyle = index === 1 ? CYAN : ACCENT
-      context.font = '900 65px Arial, "Noto Sans TC", sans-serif'
-      context.fillText(stat.value, x, 1172)
+      const x = 72 + index * 320
+      context.fillStyle = ACCENT
+      context.font = '900 60px Arial, "Noto Sans TC", sans-serif'
+      context.fillText(stat.value, x, 1165)
       context.fillStyle = 'rgba(255,255,255,0.58)'
-      context.font = '700 25px Arial, sans-serif'
-      context.fillText(stat.label, x, 1234)
+      context.font = '700 22px Arial, sans-serif'
+      context.fillText(stat.label, x, 1218)
     })
 
     context.fillStyle = ACCENT
-    context.font = '800 44px Arial, "Noto Sans TC", sans-serif'
-    context.fillText(wrapped.titleCopy, 72, 1548)
+    context.font = '800 42px Arial, "Noto Sans TC", sans-serif'
+    context.fillText(wrapped.titleCopy, 72, 1630)
     context.fillStyle = 'rgba(255,255,255,0.54)'
-    context.font = '500 31px Arial, "Noto Sans TC", sans-serif'
-    context.fillText('RIDE TOGETHER.  ES WAKE SCHOOL', 72, 1620)
-    context.fillStyle = ACCENT
-    context.fillRect(70, 1760, 940, 12)
-    context.fillStyle = '#ffffff'
-    context.font = '700 27px Arial, sans-serif'
-    context.fillText('ES WAKE · 2026 WRAPPED', 70, 1830)
+    context.font = '700 27px Arial, "Noto Sans TC", sans-serif'
+    context.fillText('RIDE TOGETHER.  ES WAKE SCHOOL', 72, 1700)
   }
 
   return canvasToBlob(canvas)
@@ -227,11 +273,31 @@ function useCountUp(target: number, enabled: boolean, duration = 1100) {
   return value
 }
 
-function ScrollHint({ onNext }: { onNext: () => void }) {
+function ScrollHint({
+  onNext,
+  initial = false,
+}: {
+  onNext: () => void
+  initial?: boolean
+}) {
   return (
-    <button className="wrapped-scroll-hint" type="button" onClick={onNext} aria-label="前往下一頁">
-      <span />
-      <b aria-hidden="true">↓</b>
+    <button
+      className={`wrapped-scroll-hint ${initial ? 'is-initial' : ''}`}
+      type="button"
+      onClick={onNext}
+      aria-label="前往下一頁"
+    >
+      {initial ? (
+        <>
+          <b aria-hidden="true">↑</b>
+          <em>SWIPE UP</em>
+        </>
+      ) : (
+        <>
+          <span />
+          <b aria-hidden="true">↓</b>
+        </>
+      )}
     </button>
   )
 }
@@ -252,6 +318,7 @@ function WrappedStory() {
     startOffset: number
   } | null>(null)
   const animatedMinutes = useCountUp(wrapped.waterMinutes, activePanel === 1)
+  const titleLines = splitWrappedTitle(wrapped.title)
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
@@ -565,6 +632,18 @@ function WrappedStory() {
           font-size: 14px;
           font-weight: 500;
         }
+        .wrapped-scroll-hint em {
+          font: 800 9px/1 Arial, sans-serif;
+          font-style: normal;
+          letter-spacing: .16em;
+        }
+        .wrapped-scroll-hint.is-initial {
+          color: rgba(255,255,255,.68);
+        }
+        .wrapped-scroll-hint.is-initial b {
+          color: var(--wrapped-cyan);
+          animation: wrapped-swipe-up 1.5s cubic-bezier(.2,.8,.2,1) infinite;
+        }
         .wrapped-scroll-hint span {
           width: 42px;
           height: 1px;
@@ -575,6 +654,10 @@ function WrappedStory() {
         @keyframes wrapped-pulse {
           0%, 100% { transform: scaleX(.45); opacity: .45; }
           50% { transform: scaleX(1); opacity: 1; }
+        }
+        @keyframes wrapped-swipe-up {
+          0%, 100% { transform: translate3d(0, 4px, 0); opacity: .45; }
+          50% { transform: translate3d(0, -3px, 0); opacity: 1; }
         }
         .wrapped-ratio {
           position: relative;
@@ -612,7 +695,20 @@ function WrappedStory() {
           border: 1px solid rgba(255,255,255,.17);
           border-radius: 18px;
           background:
-            radial-gradient(circle at 95% 15%, rgba(55,217,240,.13), transparent 32%),
+            radial-gradient(
+              circle at 90% 19%,
+              transparent 0 57px,
+              rgba(55,217,240,.16) 58px 59px,
+              transparent 60px 91px,
+              rgba(55,217,240,.13) 92px 93px,
+              transparent 94px 125px,
+              rgba(55,217,240,.1) 126px 127px,
+              transparent 128px 159px,
+              rgba(55,217,240,.08) 160px 161px,
+              transparent 162px 193px,
+              rgba(55,217,240,.06) 194px 195px,
+              transparent 196px
+            ),
             var(--wrapped-bg);
           padding: 24px;
           display: flex;
@@ -634,17 +730,18 @@ function WrappedStory() {
           content: "";
           position: absolute;
           inset: 0;
-          background: linear-gradient(to bottom, rgba(0,0,0,.54), rgba(0,0,0,.16) 42%, rgba(0,0,0,.84));
+          background: transparent;
           pointer-events: none;
           z-index: 0;
         }
         .wrapped-final-card.has-photo::after {
           background: linear-gradient(
             to bottom,
-            rgba(0,0,0,.42),
-            rgba(0,0,0,.03) 52%,
-            rgba(0,0,0,.2) 70%,
-            rgba(0,0,0,.94)
+            rgba(0,0,0,.52),
+            rgba(0,0,0,.08) 28%,
+            rgba(0,0,0,.03) 48%,
+            rgba(0,0,0,.34) 68%,
+            rgba(0,0,0,.96)
           );
         }
         .wrapped-final-card.has-photo {
@@ -659,12 +756,9 @@ function WrappedStory() {
           justify-content: space-between;
         }
         .wrapped-final-card-header span {
-          padding: 7px 11px;
-          border-radius: 999px;
-          background: #fff;
-          color: var(--wrapped-bg);
-          font: 800 9px/1 Arial, sans-serif;
-          letter-spacing: .04em;
+          color: #fff;
+          font: 800 10px/1 Arial, sans-serif;
+          letter-spacing: .1em;
         }
         .wrapped-final-card-header img {
           width: 32px;
@@ -672,15 +766,24 @@ function WrappedStory() {
           object-fit: contain;
         }
         .wrapped-final-name {
-          margin-top: 22%;
-          font: 900 clamp(44px, 14vw, 70px)/.9 Arial Black, Arial, sans-serif;
+          margin-top: 14%;
+          font: 900 clamp(38px, 12vw, 58px)/.9 Arial Black, Arial, sans-serif;
           letter-spacing: -.07em;
         }
-        .wrapped-final-title {
+        .wrapped-final-award {
           color: var(--wrapped-cyan);
-          font-size: 18px;
-          font-weight: 800;
-          margin-top: 14px;
+          font-family: Arial Black, Arial, var(--font-ui);
+          font-size: clamp(38px, 12vw, 50px);
+          font-weight: 900;
+          letter-spacing: -.055em;
+          line-height: .9;
+          margin-top: 18px;
+        }
+        .wrapped-final-award span {
+          display: block;
+        }
+        .wrapped-final-award[data-lines="2"] {
+          font-size: clamp(32px, 10.5vw, 44px);
         }
         .wrapped-final-minutes {
           margin-top: auto;
@@ -699,9 +802,7 @@ function WrappedStory() {
           grid-template-columns: repeat(3, 1fr);
           gap: 12px;
           margin-top: 22px;
-          padding: 18px 14px;
-          border-radius: 14px;
-          background: rgba(255,255,255,.1);
+          padding: 0;
         }
         .wrapped-final-stats strong { display: block; font-size: 20px; line-height: 1; }
         .wrapped-final-stats span { display: block; margin-top: 6px; color: rgba(255,255,255,.48); font-size: 9px; letter-spacing: .1em; }
@@ -724,16 +825,51 @@ function WrappedStory() {
           margin-top: auto;
         }
         .wrapped-final-photo-kicker {
-          color: #fff;
+          color: rgba(255,255,255,.74);
           font: 800 11px/1 Arial, sans-serif;
           letter-spacing: .12em;
         }
-        .wrapped-final-photo-content .wrapped-final-minutes {
-          margin-top: 14px;
+        .wrapped-final-photo-content .wrapped-final-award {
+          margin-top: 13px;
+          font-size: clamp(29px, 9.5vw, 40px);
         }
-        .wrapped-final-photo-content .wrapped-final-title {
-          margin-top: 18px;
-          font-size: 13px;
+        .wrapped-final-photo-content .wrapped-final-award[data-lines="2"] {
+          font-size: clamp(26px, 8.5vw, 35px);
+        }
+        .wrapped-final-photo-content .wrapped-final-minutes {
+          margin-top: 20px;
+          font-size: clamp(46px, 14vw, 64px);
+        }
+        .wrapped-final-card:not(.has-photo) .wrapped-final-award {
+          opacity: 0;
+          clip-path: inset(0 0 100% 0);
+          transform: translate3d(0, 12px, 0);
+        }
+        .wrapped-panel[data-active="true"] .wrapped-final-card:not(.has-photo) .wrapped-final-award {
+          animation: wrapped-poster-title .42s .12s cubic-bezier(.16,.8,.24,1) both;
+        }
+        .wrapped-final-card:not(.has-photo) .wrapped-final-minutes {
+          opacity: 0;
+          transform: translate3d(0, 10px, 0);
+        }
+        .wrapped-panel[data-active="true"] .wrapped-final-card:not(.has-photo) .wrapped-final-minutes {
+          animation: wrapped-poster-number .34s .27s cubic-bezier(.2,.8,.2,1) both;
+        }
+        @keyframes wrapped-poster-title {
+          from {
+            opacity: 0;
+            clip-path: inset(0 0 100% 0);
+            transform: translate3d(0, 12px, 0);
+          }
+          to {
+            opacity: 1;
+            clip-path: inset(0 0 0 0);
+            transform: translate3d(0, 0, 0);
+          }
+        }
+        @keyframes wrapped-poster-number {
+          from { opacity: 0; transform: translate3d(0, 10px, 0); }
+          to { opacity: 1; transform: translate3d(0, 0, 0); }
         }
         .wrapped-share-editor {
           position: relative;
@@ -868,10 +1004,19 @@ function WrappedStory() {
           }
           .wrapped-panel[data-active="true"] [data-reveal],
           .wrapped-title-panel[data-active="true"] .wrapped-title-word,
+          .wrapped-panel[data-active="true"] .wrapped-final-card:not(.has-photo) .wrapped-final-award,
+          .wrapped-panel[data-active="true"] .wrapped-final-card:not(.has-photo) .wrapped-final-minutes,
+          .wrapped-scroll-hint.is-initial b,
           .wrapped-scroll-hint span {
             animation: none;
           }
           .wrapped-title-word {
+            clip-path: none;
+            transform: none;
+          }
+          .wrapped-final-card:not(.has-photo) .wrapped-final-award,
+          .wrapped-final-card:not(.has-photo) .wrapped-final-minutes {
+            opacity: 1;
             clip-path: none;
             transform: none;
           }
@@ -907,7 +1052,7 @@ function WrappedStory() {
             <span className="wrapped-cyan">THE WATER.</span>
           </h1>
         </div>
-        <div data-reveal="late"><ScrollHint onNext={() => goToPanel(1)} /></div>
+        <div data-reveal="late"><ScrollHint initial onNext={() => goToPanel(1)} /></div>
       </section>
 
       <section
@@ -1008,7 +1153,6 @@ function WrappedStory() {
         <BrandMark />
         <div
           className={`wrapped-final-card ${shareStyle === 'photo' && photoUrl ? 'has-photo' : ''}`}
-          data-reveal
           onPointerDown={handlePhotoPointerDown}
           onPointerMove={handlePhotoPointerMove}
           onPointerUp={handlePhotoPointerEnd}
@@ -1031,17 +1175,21 @@ function WrappedStory() {
           </div>
           {shareStyle === 'photo' && photoUrl ? (
             <div className="wrapped-final-photo-content">
-              <div className="wrapped-final-photo-kicker">{wrapped.name} · ES {wrapped.year}</div>
+              <div className="wrapped-final-photo-kicker">{wrapped.name} · {wrapped.year}</div>
+              <div className="wrapped-final-award" data-lines={titleLines.length}>
+                {titleLines.map((line, index) => <span key={`${line}-${index}`}>{line}</span>)}
+              </div>
               <div className="wrapped-final-minutes">
                 {wrapped.waterMinutes.toLocaleString('en-US')}
               </div>
               <div className="wrapped-final-label">MINUTES ON THE WATER</div>
-              <div className="wrapped-final-title">年度稱號｜{wrapped.title}</div>
             </div>
           ) : (
             <>
               <div className="wrapped-final-name">{wrapped.name}</div>
-              <div className="wrapped-final-title">年度稱號｜{wrapped.title}</div>
+              <div className="wrapped-final-award" data-lines={titleLines.length}>
+                {titleLines.map((line, index) => <span key={`${line}-${index}`}>{line}</span>)}
+              </div>
               <div className="wrapped-final-minutes">
                 {wrapped.waterMinutes.toLocaleString('en-US')}
               </div>
