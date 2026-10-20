@@ -592,6 +592,9 @@ export function VoucherYearBalancePanel({
                             Number(person.packageSummary.board_years_granted || 0) > 0
                               ? `置板 ${Number(person.packageSummary.board_years_applied || 0)}/${Number(person.packageSummary.board_years_granted)}年`
                               : '',
+                            Number(person.packageSummary.benefit_minutes_granted || 0) > 0
+                              ? `贈送 ${Number(person.packageSummary.benefit_minutes_used || 0)}/${Number(person.packageSummary.benefit_minutes_granted)}分`
+                              : '',
                             Number(person.packageSummary.competition_uses_granted || 0) > 0
                               ? `賽事 ${Number(person.packageSummary.competition_uses_used || 0)}/${Number(person.packageSummary.competition_uses_granted)}次`
                               : '',

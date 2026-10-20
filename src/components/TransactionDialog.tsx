@@ -1060,7 +1060,7 @@ export function TransactionDialog({
                       {' · '}
                       ${packageTotalPrice.toLocaleString()}
                       {packageHours === 20
-                        ? ` · 置板 ${Number(packageBookCount) || 0} 年 · 賽事 ${(Number(packageBookCount) || 0) * 3} 次`
+                        ? ` · 置板 ${Number(packageBookCount) || 0} 年 · 贈送 ${(Number(packageBookCount) || 0) * 180} 分 · 賽事 ${(Number(packageBookCount) || 0) * 3} 次`
                         : ''}
                     </div>
                   </div>

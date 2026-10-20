@@ -10,6 +10,13 @@ const boardDateFixMigration = readFileSync(
   resolve(process.cwd(), 'migrations/259_fix_voucher_package_board_note_date.sql'),
   'utf8',
 )
+const benefitRefinementMigration = readFileSync(
+  resolve(
+    process.cwd(),
+    'migrations/260_refine_2027_voucher_package_benefits.sql',
+  ),
+  'utf8',
+)
 
 describe('2027 voucher package migration', () => {
   it('adds isolated structures without replacing existing accounting functions', () => {
@@ -72,6 +79,59 @@ describe('2027 voucher package migration', () => {
     )
     expect(boardDateFixMigration).not.toMatch(
       /\b(UPDATE|DELETE)\s+public\.(members|transactions|credit_lots)\b/i,
+    )
+  })
+
+  it('adds flexible activity and competition minutes without mutating old data', () => {
+    const installOnly = benefitRefinementMigration.slice(
+      0,
+      benefitRefinementMigration.indexOf(
+        'CREATE OR REPLACE FUNCTION public.prevent_used_voucher_package_purchase_delete(',
+      ),
+    )
+    expect(benefitRefinementMigration).toContain(
+      'benefit_minutes_granted INTEGER',
+    )
+    expect(benefitRefinementMigration).toContain('book_count * 180')
+    expect(benefitRefinementMigration).toContain(
+      "p_redemption_type NOT IN ('activity', 'competition')",
+    )
+    expect(benefitRefinementMigration).toContain(
+      'CREATE OR REPLACE FUNCTION public.redeem_voucher_package_benefit(',
+    )
+    expect(benefitRefinementMigration).not.toContain(
+      'CREATE OR REPLACE FUNCTION public.process_manual_member_adjust(',
+    )
+    expect(installOnly).not.toMatch(
+      /\b(UPDATE|DELETE|INSERT)\s+(INTO\s+|FROM\s+)?public\.(members|transactions|credit_lots|board_storage)\b/i,
+    )
+  })
+
+  it('keeps board inputs typed as DATE and provides atomic undo', () => {
+    expect(benefitRefinementMigration).toContain(
+      'p_target_expires_at DATE',
+    )
+    expect(benefitRefinementMigration).toContain('p_start_date DATE')
+    expect(benefitRefinementMigration).toContain(
+      'CREATE OR REPLACE FUNCTION public.undo_voucher_package_board_application(',
+    )
+    expect(benefitRefinementMigration).toContain(
+      'p_expected_expires_at DATE',
+    )
+    expect(benefitRefinementMigration).toContain(
+      'CREATE TRIGGER trg_protect_package_linked_board_storage',
+    )
+    expect(benefitRefinementMigration).toContain(
+      'beneficiary_member_id UUID',
+    )
+    expect(benefitRefinementMigration).toContain(
+      'p_beneficiary_member_id UUID',
+    )
+    expect(benefitRefinementMigration).toContain(
+      'public.membership_venue_date(),',
+    )
+    expect(benefitRefinementMigration).not.toContain(
+      'public.membership_venue_date()::TEXT',
     )
   })
 })

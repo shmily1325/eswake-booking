@@ -1608,6 +1608,8 @@ export type Database = {
           balance_deduction: number
           board_years_granted: number
           board_years_applied: number
+          benefit_minutes_granted: number
+          benefit_minutes_used: number
           competition_uses_granted: number
           competition_uses_used: number
           voucher_transaction_id: number | null
@@ -1633,6 +1635,8 @@ export type Database = {
           balance_deduction?: number
           board_years_granted?: number
           board_years_applied?: number
+          benefit_minutes_granted?: number
+          benefit_minutes_used?: number
           competition_uses_granted?: number
           competition_uses_used?: number
           voucher_transaction_id?: number | null
@@ -1658,6 +1662,8 @@ export type Database = {
           balance_deduction?: number
           board_years_granted?: number
           board_years_applied?: number
+          benefit_minutes_granted?: number
+          benefit_minutes_used?: number
           competition_uses_granted?: number
           competition_uses_used?: number
           voucher_transaction_id?: number | null
@@ -1677,6 +1683,7 @@ export type Database = {
           member_id: string
           voucher_year: number
           category: string
+          redemption_type: string
           books_redeemed: number
           minutes_added: number
           note: string
@@ -1692,6 +1699,7 @@ export type Database = {
           member_id: string
           voucher_year: number
           category: string
+          redemption_type?: string
           books_redeemed: number
           minutes_added: number
           note: string
@@ -1707,6 +1715,7 @@ export type Database = {
           member_id?: string
           voucher_year?: number
           category?: string
+          redemption_type?: string
           books_redeemed?: number
           minutes_added?: number
           note?: string
@@ -1726,8 +1735,12 @@ export type Database = {
           voucher_year: number
           category: string
           board_storage_id: number | null
+          beneficiary_member_id: string | null
           slot_number: number
           years_applied: number
+          application_kind: string
+          application_order: number
+          member_note_id: number | null
           old_expires_at: string
           new_expires_at: string
           purchase_allocations: Json
@@ -1742,8 +1755,12 @@ export type Database = {
           voucher_year: number
           category: string
           board_storage_id?: number | null
+          beneficiary_member_id?: string | null
           slot_number: number
           years_applied: number
+          application_kind?: string
+          application_order?: number
+          member_note_id?: number | null
           old_expires_at: string
           new_expires_at: string
           purchase_allocations?: Json
@@ -1758,8 +1775,12 @@ export type Database = {
           voucher_year?: number
           category?: string
           board_storage_id?: number | null
+          beneficiary_member_id?: string | null
           slot_number?: number
           years_applied?: number
+          application_kind?: string
+          application_order?: number
+          member_note_id?: number | null
           old_expires_at?: string
           new_expires_at?: string
           purchase_allocations?: Json
@@ -2503,6 +2524,41 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_voucher_package_board_benefit: {
+        Args: {
+          p_request_key: string
+          p_member_id: string
+          p_voucher_year: number
+          p_category: string
+          p_beneficiary_member_id: string
+          p_board_storage_id: number
+          p_expected_expires_at: string
+          p_target_expires_at: string
+          p_note?: string | null
+        }
+        Returns: Json
+      }
+      create_board_with_voucher_package_benefit: {
+        Args: {
+          p_request_key: string
+          p_member_id: string
+          p_voucher_year: number
+          p_category: string
+          p_beneficiary_member_id: string
+          p_slot_number: number
+          p_start_date: string
+          p_target_expires_at: string
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      undo_voucher_package_board_application: {
+        Args: {
+          p_application_id: string
+          p_member_id: string
+        }
+        Returns: Json
+      }
       redeem_voucher_package_competition: {
         Args: {
           p_request_key: string
@@ -2513,7 +2569,26 @@ export type Database = {
         }
         Returns: Json
       }
+      redeem_voucher_package_benefit: {
+        Args: {
+          p_request_key: string
+          p_member_id: string
+          p_voucher_year: number
+          p_category: string
+          p_redemption_type: string
+          p_minutes?: number
+          p_note?: string | null
+        }
+        Returns: Json
+      }
       delete_voucher_package_competition_redemption: {
+        Args: {
+          p_redemption_id: string
+          p_member_id: string
+        }
+        Returns: Json
+      }
+      delete_voucher_package_benefit_redemption: {
         Args: {
           p_redemption_id: string
           p_member_id: string

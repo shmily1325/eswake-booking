@@ -12,6 +12,7 @@ type PackageDefinition = {
   minutesPerBook: number
   pricePerBook: number
   boardYearsPerBook: number
+  benefitMinutesPerBook: number
   competitionUsesPerBook: number
 }
 
@@ -24,12 +25,14 @@ export const VOUCHER_PACKAGE_DEFINITIONS: Record<
       minutesPerBook: 600,
       pricePerBook: 98_000,
       boardYearsPerBook: 0,
+      benefitMinutesPerBook: 0,
       competitionUsesPerBook: 0,
     },
     20: {
       minutesPerBook: 1_200,
       pricePerBook: 195_000,
       boardYearsPerBook: 1,
+      benefitMinutesPerBook: 180,
       competitionUsesPerBook: 3,
     },
   },
@@ -38,12 +41,14 @@ export const VOUCHER_PACKAGE_DEFINITIONS: Record<
       minutesPerBook: 600,
       pricePerBook: 58_000,
       boardYearsPerBook: 0,
+      benefitMinutesPerBook: 0,
       competitionUsesPerBook: 0,
     },
     20: {
       minutesPerBook: 1_200,
       pricePerBook: 115_000,
       boardYearsPerBook: 1,
+      benefitMinutesPerBook: 180,
       competitionUsesPerBook: 3,
     },
   },
@@ -94,6 +99,8 @@ export interface VoucherPackageOverviewRow {
   books_20h: number | null
   board_years_granted: number
   board_years_applied: number
+  benefit_minutes_granted: number
+  benefit_minutes_used: number
   competition_uses_granted: number
   competition_uses_used: number
 }
@@ -107,6 +114,8 @@ export interface VoucherPackagePurchase {
   balance_deduction: number
   board_years_granted: number
   board_years_applied: number
+  benefit_minutes_granted: number
+  benefit_minutes_used: number
   competition_uses_granted: number
   competition_uses_used: number
   transaction_date: string
@@ -116,7 +125,8 @@ export interface VoucherPackagePurchase {
 
 export interface VoucherPackageRedemption {
   id: string
-  books_redeemed: number
+  redemption_type: 'activity' | 'competition'
+  competition_uses_redeemed: number
   minutes_added: number
   note: string
   redeemed_at: string
@@ -124,10 +134,15 @@ export interface VoucherPackageRedemption {
 
 export interface VoucherPackageBoardApplication {
   id: string
+  board_storage_id: number | null
+  beneficiary_member_id: string | null
+  beneficiary_name: string
   slot_number: number
   years_applied: number
   old_expires_at: string
   new_expires_at: string
+  application_kind: 'extend' | 'create'
+  application_order: number
   note: string | null
   applied_at: string
 }
@@ -214,22 +229,26 @@ export async function deleteVoucherPackagePurchase(params: {
   assertRpcSuccess(data, '刪除方案失敗')
 }
 
-export async function applyVoucherPackageBoardYears(params: {
+export async function applyVoucherPackageBoardBenefit(params: {
   requestKey: string
   memberId: string
   voucherYear: number
   category: VoucherPackageCategory
+  beneficiaryMemberId: string
   boardStorageId: number
-  years: number
+  expectedExpiresAt: string
+  targetExpiresAt: string
   note?: string | null
 }): Promise<RpcEnvelope> {
-  const { data, error } = await supabase.rpc('apply_voucher_package_board_years', {
+  const { data, error } = await supabase.rpc('apply_voucher_package_board_benefit', {
     p_request_key: params.requestKey,
     p_member_id: params.memberId,
     p_voucher_year: params.voucherYear,
     p_category: params.category,
+    p_beneficiary_member_id: params.beneficiaryMemberId,
     p_board_storage_id: params.boardStorageId,
-    p_years: params.years,
+    p_expected_expires_at: params.expectedExpiresAt,
+    p_target_expires_at: params.targetExpiresAt,
     p_note: params.note ?? null,
   })
   if (error) throw new Error(error.message || '置板套用失敗')
@@ -237,36 +256,85 @@ export async function applyVoucherPackageBoardYears(params: {
   return data
 }
 
-export async function redeemVoucherPackageCompetition(params: {
+export async function createBoardWithVoucherPackageBenefit(params: {
   requestKey: string
   memberId: string
   voucherYear: number
   category: VoucherPackageCategory
+  beneficiaryMemberId: string
+  slotNumber: number
+  startDate: string
+  targetExpiresAt: string
+  notes?: string | null
+}): Promise<RpcEnvelope> {
+  const { data, error } = await supabase.rpc(
+    'create_board_with_voucher_package_benefit',
+    {
+      p_request_key: params.requestKey,
+      p_member_id: params.memberId,
+      p_voucher_year: params.voucherYear,
+      p_category: params.category,
+      p_beneficiary_member_id: params.beneficiaryMemberId,
+      p_slot_number: params.slotNumber,
+      p_start_date: params.startDate,
+      p_target_expires_at: params.targetExpiresAt,
+      p_notes: params.notes ?? null,
+    },
+  )
+  if (error) throw new Error(error.message || '新增方案置板失敗')
+  assertRpcSuccess(data, '新增方案置板失敗')
+  return data
+}
+
+export async function undoVoucherPackageBoardApplication(params: {
+  applicationId: string
+  memberId: string
+}): Promise<void> {
+  const { data, error } = await supabase.rpc(
+    'undo_voucher_package_board_application',
+    {
+      p_application_id: params.applicationId,
+      p_member_id: params.memberId,
+    },
+  )
+  if (error) throw new Error(error.message || '撤銷置板權益失敗')
+  assertRpcSuccess(data, '撤銷置板權益失敗')
+}
+
+export async function redeemVoucherPackageBenefit(params: {
+  requestKey: string
+  memberId: string
+  voucherYear: number
+  category: VoucherPackageCategory
+  redemptionType: 'activity' | 'competition'
+  minutes: number
   note: string
 }): Promise<RpcEnvelope> {
-  const { data, error } = await supabase.rpc('redeem_voucher_package_competition', {
+  const { data, error } = await supabase.rpc('redeem_voucher_package_benefit', {
     p_request_key: params.requestKey,
     p_member_id: params.memberId,
     p_voucher_year: params.voucherYear,
     p_category: params.category,
+    p_redemption_type: params.redemptionType,
+    p_minutes: params.minutes,
     p_note: params.note,
   })
-  if (error) throw new Error(error.message || '賽事兌換失敗')
-  assertRpcSuccess(data, '賽事兌換失敗')
+  if (error) throw new Error(error.message || '活動／賽事贈送失敗')
+  assertRpcSuccess(data, '活動／賽事贈送失敗')
   return data
 }
 
-export async function deleteVoucherPackageCompetitionRedemption(params: {
+export async function deleteVoucherPackageBenefitRedemption(params: {
   redemptionId: string
   memberId: string
 }): Promise<void> {
   const { data, error } = await supabase.rpc(
-    'delete_voucher_package_competition_redemption',
+    'delete_voucher_package_benefit_redemption',
     {
       p_redemption_id: params.redemptionId,
       p_member_id: params.memberId,
     },
   )
-  if (error) throw new Error(error.message || '刪除賽事兌換失敗')
-  assertRpcSuccess(data, '刪除賽事兌換失敗')
+  if (error) throw new Error(error.message || '刪除活動／賽事贈送失敗')
+  assertRpcSuccess(data, '刪除活動／賽事贈送失敗')
 }

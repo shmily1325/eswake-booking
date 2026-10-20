@@ -20,8 +20,10 @@ describe('2027 voucher package definitions', () => {
 
     expect(tenHour.minutesPerBook * 2).toBe(twentyHour.minutesPerBook)
     expect(tenHour.boardYearsPerBook * 2).toBe(0)
+    expect(tenHour.benefitMinutesPerBook * 2).toBe(0)
     expect(tenHour.competitionUsesPerBook * 2).toBe(0)
     expect(twentyHour.boardYearsPerBook).toBe(1)
+    expect(twentyHour.benefitMinutesPerBook).toBe(180)
     expect(twentyHour.competitionUsesPerBook).toBe(3)
   })
 })

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, type CSSProperties } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthUser } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/PageHeader'
 import { Footer } from '../../components/Footer'
 import { useResponsive } from '../../hooks/useResponsive'
 import {
+  addDaysToDate,
   addYearsToDate,
   daysBetweenDates,
   EXPIRING_SOON_DAYS,
@@ -18,7 +19,17 @@ import { isAdmin } from '../../utils/auth'
 import { moveBoardStorage } from '../../services/boardStorage'
 import { buildBoardDateEditDescription } from '../../lib/boardOperations'
 import {
+  createBoardWithVoucherPackageBenefit,
+  createVoucherPackageRequestKey,
+  getMemberVoucherPackageDetail,
+  isVoucherPackageCategory,
+  VOUCHER_PACKAGE_CATEGORY_LABEL,
+  VOUCHER_PACKAGE_YEAR,
+  type VoucherPackageCategory,
+} from '../../lib/voucherPackages'
+import {
   designSystem,
+  getBookingChoiceStyle,
   getButtonStyle,
   getFontSize,
   getFormGroupStyle,
@@ -139,6 +150,13 @@ interface BoardSlot {
   status?: string | null
 }
 
+interface PackageBoardGiftContext {
+  owner: MemberBasic
+  recipient: MemberBasic
+  category: VoucherPackageCategory
+  voucherYear: number
+}
+
 // 置板區配置
 const BOARD_SECTIONS = [
   { name: '第1排', start: 1, end: 30 },
@@ -151,6 +169,7 @@ const BOARD_SECTIONS = [
 export function BoardManagement() {
   const user = useAuthUser()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const toast = useToast()
   const { isMobile } = useResponsive()
   const [boardSlots, setBoardSlots] = useState<BoardSlot[]>([])
@@ -192,11 +211,136 @@ export function BoardManagement() {
   const [memberSearch, setMemberSearch] = useState('')
   const [searchResults, setSearchResults] = useState<MemberBasic[]>([])
   const [selectedMember, setSelectedMember] = useState<MemberBasic | null>(null)
+  const [packageGiftContext, setPackageGiftContext] =
+    useState<PackageBoardGiftContext | null>(null)
+  const [packageBoardOptions, setPackageBoardOptions] = useState<Array<{
+    category: VoucherPackageCategory
+    pendingYears: number
+  }>>([])
+  const [selectedPackageCategory, setSelectedPackageCategory] =
+    useState<VoucherPackageCategory | null>(null)
+  const [packageOptionsLoading, setPackageOptionsLoading] = useState(false)
+  const [addBoardSaving, setAddBoardSaving] = useState(false)
   const [newBoardForm, setNewBoardForm] = useState({
     start_date: '',
     expires_at: '',
     notes: ''
   })
+
+  useEffect(() => {
+    const ownerId = searchParams.get('packageOwnerId')
+    const recipientId = searchParams.get('boardRecipientId')
+    const category = searchParams.get('packageCategory')
+    const voucherYear = Number(searchParams.get('voucherYear'))
+    if (
+      !ownerId ||
+      !recipientId ||
+      !isVoucherPackageCategory(category || '') ||
+      voucherYear !== VOUCHER_PACKAGE_YEAR
+    ) {
+      setPackageGiftContext(null)
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('members')
+          .select('id, name, nickname, phone, status')
+          .in('id', [ownerId, recipientId])
+        if (cancelled) return
+        if (error) throw error
+        const members = (data || []) as MemberBasic[]
+        const owner = members.find((item) => item.id === ownerId)
+        const recipient = members.find((item) => item.id === recipientId)
+        if (!owner || !recipient || recipient.status !== 'active') {
+          throw new Error('找不到方案持有人或有效的置板會員')
+        }
+        setPackageGiftContext({
+          owner,
+          recipient,
+          category: category as VoucherPackageCategory,
+          voucherYear,
+        })
+        setSelectedMember(recipient)
+      } catch (error) {
+        if (cancelled) return
+        console.error('載入贈送置板資料失敗:', error)
+        toast.error(error instanceof Error ? error.message : '載入贈送置板資料失敗')
+        setPackageGiftContext(null)
+        setSearchParams({}, { replace: true })
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [searchParams, setSearchParams, toast])
+
+  useEffect(() => {
+    let cancelled = false
+    setPackageBoardOptions([])
+    setSelectedPackageCategory(null)
+    if (!selectedMember) {
+      setPackageOptionsLoading(false)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    setPackageOptionsLoading(true)
+    const categories: VoucherPackageCategory[] = packageGiftContext
+      ? [packageGiftContext.category]
+      : ['boat_voucher_g23', 'boat_voucher_g21_panther']
+    const packageOwnerId = packageGiftContext?.owner.id || selectedMember.id
+    const voucherYear = packageGiftContext?.voucherYear || VOUCHER_PACKAGE_YEAR
+    void Promise.all(
+      categories.map(async (category) => {
+        const detail = await getMemberVoucherPackageDetail({
+          memberId: packageOwnerId,
+          voucherYear,
+          category,
+        })
+        const pendingYears = detail.purchases.reduce(
+          (total, purchase) =>
+            total + purchase.board_years_granted - purchase.board_years_applied,
+          0,
+        )
+        return { category, pendingYears }
+      }),
+    )
+      .then((options) => {
+        if (cancelled) return
+        const availableOptions = options.filter((option) => option.pendingYears > 0)
+        setPackageBoardOptions(availableOptions)
+        if (packageGiftContext && availableOptions.length > 0) {
+          const startDate = getVenueDateString()
+          setSelectedPackageCategory(packageGiftContext.category)
+          setNewBoardForm((current) => ({
+            ...current,
+            start_date: current.start_date || startDate,
+            expires_at: current.expires_at || addYearsToDate(startDate, 1),
+          }))
+        } else if (packageGiftContext) {
+          toast.warning('這筆方案目前沒有可使用的置板權益')
+          setPackageGiftContext(null)
+          setSearchParams({}, { replace: true })
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return
+        console.error('載入方案置板權益失敗:', error)
+        setPackageBoardOptions([])
+      })
+      .finally(() => {
+        if (!cancelled) setPackageOptionsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [packageGiftContext, selectedMember, setSearchParams, toast])
   
   const loadBoardData = async () => {
     setLoading(true)
@@ -451,7 +595,11 @@ export function BoardManagement() {
       loadBoardData()
     } catch (error) {
       console.error('更新失敗:', error)
-      toast.error('更新失敗')
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String(error.message)
+          : '更新失敗'
+      toast.error(message)
     }
   }
 
@@ -486,7 +634,11 @@ export function BoardManagement() {
       loadBoardData()
     } catch (error) {
       console.error('刪除失敗:', error)
-      toast.error('刪除失敗')
+      const message =
+        typeof error === 'object' && error && 'message' in error
+          ? String(error.message)
+          : '刪除失敗'
+      toast.error(message)
     }
   }
 
@@ -536,33 +688,57 @@ export function BoardManagement() {
 
   // 處理新增置板
   const handleAddBoard = async () => {
-    if (!selectedMember || !selectedSlot) return
+    if (!selectedMember || !selectedSlot || addBoardSaving) return
 
+    if (
+      selectedPackageCategory &&
+      (!newBoardForm.start_date || !newBoardForm.expires_at)
+    ) {
+      toast.warning('使用方案權益時，請確認開始日與到期日')
+      return
+    }
+
+    setAddBoardSaving(true)
     try {
-      const { error } = await supabase
-        .from('board_storage')
-        .insert({
-          slot_number: selectedSlot.slot_number,
-          member_id: selectedMember.id,
-          start_date: newBoardForm.start_date || null,
-          expires_at: newBoardForm.expires_at || null,
+      if (selectedPackageCategory) {
+        await createBoardWithVoucherPackageBenefit({
+          requestKey: createVoucherPackageRequestKey(),
+          memberId: packageGiftContext?.owner.id || selectedMember.id,
+          voucherYear: packageGiftContext?.voucherYear || VOUCHER_PACKAGE_YEAR,
+          category: selectedPackageCategory,
+          beneficiaryMemberId: selectedMember.id,
+          slotNumber: selectedSlot.slot_number,
+          startDate: newBoardForm.start_date,
+          targetExpiresAt: newBoardForm.expires_at,
           notes: newBoardForm.notes.trim() || null,
-          status: 'active'
         })
+        toast.success(`已新增格位 #${selectedSlot.slot_number}，並使用 1 年方案權益`)
+      } else {
+        const { error } = await supabase
+          .from('board_storage')
+          .insert({
+            slot_number: selectedSlot.slot_number,
+            member_id: selectedMember.id,
+            start_date: newBoardForm.start_date || null,
+            expires_at: newBoardForm.expires_at || null,
+            notes: newBoardForm.notes.trim() || null,
+            status: 'active'
+          })
 
-      if (error) throw error
+        if (error) throw error
 
-      // 新增備忘錄
-      const today = getVenueDateString()
-      const expiryInfo = newBoardForm.expires_at ? `，至 ${newBoardForm.expires_at}` : ''
-      await supabase.from('member_notes').insert([{
-        member_id: selectedMember.id,
-        event_date: newBoardForm.start_date || today,
-        event_type: '備註',
-        description: `置板開始 #${selectedSlot.slot_number}${expiryInfo}`
-      }])
+        // 新增備忘錄
+        const today = getVenueDateString()
+        const expiryInfo = newBoardForm.expires_at ? `，至 ${newBoardForm.expires_at}` : ''
+        await supabase.from('member_notes').insert([{
+          member_id: selectedMember.id,
+          event_date: newBoardForm.start_date || today,
+          event_type: '備註',
+          description: `置板開始 #${selectedSlot.slot_number}${expiryInfo}`
+        }])
 
-      toast.success(`已新增格位 #${selectedSlot.slot_number}`)
+        toast.success(`已新增格位 #${selectedSlot.slot_number}`)
+      }
 
       // 重置狀態
       setIsAddingBoard(false)
@@ -570,12 +746,18 @@ export function BoardManagement() {
       setSelectedMember(null)
       setMemberSearch('')
       setSearchResults([])
+      setPackageBoardOptions([])
+      setSelectedPackageCategory(null)
+      setPackageGiftContext(null)
+      setSearchParams({}, { replace: true })
       setNewBoardForm({ start_date: '', expires_at: '', notes: '' })
       
       loadBoardData()
     } catch (error) {
       console.error('新增置板失敗:', error)
-      toast.error('新增置板失敗')
+      toast.error(error instanceof Error ? error.message : '新增置板失敗')
+    } finally {
+      setAddBoardSaving(false)
     }
   }
 
@@ -583,9 +765,13 @@ export function BoardManagement() {
   const startAddingBoard = (slotNumber: number) => {
     setSelectedSlot({ slot_number: slotNumber })
     setIsAddingBoard(true)
-    setSelectedMember(null)
+    setSelectedMember(packageGiftContext?.recipient || null)
     setMemberSearch('')
     setSearchResults([])
+    if (!packageGiftContext) {
+      setPackageBoardOptions([])
+      setSelectedPackageCategory(null)
+    }
     setNewBoardForm({ start_date: '', expires_at: '', notes: '' })
   }
 
@@ -886,6 +1072,45 @@ export function BoardManagement() {
           </div>
         </div>
       </div>
+
+      {packageGiftContext && !isAddingBoard ? (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: designSystem.spacing.md,
+            marginBottom: designSystem.spacing.lg,
+            padding: `${designSystem.spacing.md} ${designSystem.spacing.lg}`,
+            background: designSystem.colors.background.card,
+            border: `1px solid ${designSystem.colors.border.light}`,
+            borderRadius: designSystem.borderRadius.lg,
+          }}
+        >
+          <div>
+            <div style={{ ...getTextStyle('body', isMobile), fontWeight: 650 }}>
+              為 {packageGiftContext.recipient.nickname || packageGiftContext.recipient.name}{' '}
+              選擇空格位
+            </div>
+            <div style={getFieldMetaStyle(isMobile)}>
+              使用 {packageGiftContext.owner.nickname || packageGiftContext.owner.name} 的{' '}
+              {packageGiftContext.voucherYear}{' '}
+              {VOUCHER_PACKAGE_CATEGORY_LABEL[packageGiftContext.category]} 方案權益
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setPackageGiftContext(null)
+              setSelectedMember(null)
+              setSearchParams({}, { replace: true })
+            }}
+            style={getButtonStyle('outline', 'small', isMobile)}
+          >
+            取消
+          </button>
+        </div>
+      ) : null}
 
       {movingSlot && (
         <div style={{
@@ -1357,6 +1582,8 @@ export function BoardManagement() {
                               onClick={() => {
                                 setSelectedMember(null)
                                 setMemberSearch('')
+                                setPackageGiftContext(null)
+                                setSearchParams({}, { replace: true })
                               }}
                               style={dialogCloseButtonStyle}
                               aria-label="清除選擇"
@@ -1367,24 +1594,117 @@ export function BoardManagement() {
                         )}
                       </div>
 
+                      {selectedMember && (
+                        <div style={getFormGroupStyle(isMobile)}>
+                          {packageOptionsLoading ? (
+                            <div style={getFieldMetaStyle(isMobile)}>
+                              檢查 2027 方案權益…
+                            </div>
+                          ) : packageBoardOptions.length > 0 ? (
+                            <>
+                              <label style={getLabelStyle(isMobile)}>
+                                方案置板
+                                <span style={getFieldMetaStyle(isMobile)}>
+                                  （選填）
+                                </span>
+                              </label>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: designSystem.spacing.sm,
+                                }}
+                              >
+                                {packageBoardOptions.map((option) => (
+                                  <button
+                                    key={option.category}
+                                    type="button"
+                                    aria-pressed={
+                                      selectedPackageCategory === option.category
+                                    }
+                                    onClick={() => {
+                                      if (packageGiftContext) return
+                                      if (
+                                        selectedPackageCategory === option.category
+                                      ) {
+                                        setSelectedPackageCategory(null)
+                                        return
+                                      }
+                                      const startDate =
+                                        newBoardForm.start_date ||
+                                        getVenueDateString()
+                                      setSelectedPackageCategory(option.category)
+                                      setNewBoardForm({
+                                        ...newBoardForm,
+                                        start_date: startDate,
+                                        expires_at: addYearsToDate(startDate, 1),
+                                      })
+                                    }}
+                                    style={{
+                                      ...getBookingChoiceStyle(
+                                        selectedPackageCategory === option.category,
+                                      ),
+                                      minHeight: 44,
+                                      textAlign: 'left',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    使用{' '}
+                                    {packageGiftContext
+                                      ? `${packageGiftContext.owner.nickname || packageGiftContext.owner.name} 的 `
+                                      : ''}
+                                    2027{' '}
+                                    {VOUCHER_PACKAGE_CATEGORY_LABEL[option.category]}{' '}
+                                    贈送 1 年（剩餘 {option.pendingYears} 年）
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          ) : null}
+                        </div>
+                      )}
+
                       <div style={getFormGroupStyle(isMobile)}>
                         <label style={getLabelStyle(isMobile)}>
-                          開始日 <span style={getFieldMetaStyle(isMobile)}>（選填）</span>
+                          開始日{' '}
+                          <span style={getFieldMetaStyle(isMobile)}>
+                            {selectedPackageCategory ? '（必填）' : '（選填）'}
+                          </span>
                         </label>
                         <input
                           type="date"
                           value={newBoardForm.start_date}
-                          onChange={(e) => setNewBoardForm({ ...newBoardForm, start_date: e.target.value })}
+                          onChange={(e) => {
+                            const startDate = e.target.value
+                            setNewBoardForm({
+                              ...newBoardForm,
+                              start_date: startDate,
+                              expires_at:
+                                selectedPackageCategory && startDate
+                                  ? addYearsToDate(startDate, 1)
+                                  : newBoardForm.expires_at,
+                            })
+                          }}
                           style={{ ...getInputStyle(isMobile), boxSizing: 'border-box' }}
                         />
                       </div>
 
                       <div style={getFormGroupStyle(isMobile)}>
                         <label style={getLabelStyle(isMobile)}>
-                          到期日 <span style={getFieldMetaStyle(isMobile)}>（選填）</span>
+                          到期日{' '}
+                          <span style={getFieldMetaStyle(isMobile)}>
+                            {selectedPackageCategory ? '（必填，可調整）' : '（選填）'}
+                          </span>
                         </label>
                         <input
                           type="date"
+                          min={
+                            selectedPackageCategory
+                              ? newBoardForm.start_date
+                                ? addDaysToDate(newBoardForm.start_date, 1)
+                                : undefined
+                              : undefined
+                          }
                           value={newBoardForm.expires_at}
                           onChange={(e) => setNewBoardForm({ ...newBoardForm, expires_at: e.target.value })}
                           style={{ ...getInputStyle(isMobile), boxSizing: 'border-box' }}
@@ -1410,21 +1730,38 @@ export function BoardManagement() {
                             setIsAddingBoard(false)
                             setSelectedSlot(null)
                           }}
+                          disabled={addBoardSaving}
                           style={{ ...getButtonStyle('outline', 'medium', isMobile), flex: 1 }}
                         >
                           取消
                         </button>
                         <button
                           onClick={handleAddBoard}
-                          disabled={!selectedMember}
+                          disabled={
+                            !selectedMember ||
+                            addBoardSaving ||
+                            Boolean(
+                              selectedPackageCategory &&
+                              (!newBoardForm.start_date ||
+                                !newBoardForm.expires_at),
+                            )
+                          }
                           style={{
                             ...getButtonStyle('primary', 'medium', isMobile),
                             flex: 1,
-                            opacity: selectedMember ? 1 : 0.45,
-                            cursor: selectedMember ? 'pointer' : 'not-allowed',
+                            opacity:
+                              selectedMember && !addBoardSaving ? 1 : 0.45,
+                            cursor:
+                              selectedMember && !addBoardSaving
+                                ? 'pointer'
+                                : 'not-allowed',
                           }}
                         >
-                          確認新增
+                          {addBoardSaving
+                            ? '處理中…'
+                            : selectedPackageCategory
+                              ? '新增並使用權益'
+                              : '確認新增'}
                         </button>
                       </div>
                     </>
