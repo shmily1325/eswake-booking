@@ -23,6 +23,8 @@ async function bootstrap() {
   }
 
   if (entry === 'public-book') {
+    const { initializePublicBookingGa4 } = await import('./lib/ga4')
+    initializePublicBookingGa4()
     const { default: AppPublicBook } = await import('./AppPublicBook')
     createRoot(rootEl).render(
       <StrictMode>

@@ -73,6 +73,7 @@ import { getStepBlockReason } from './liffBookingValidation'
 import { liffTrack } from '../track'
 import { resolveVisitGuideUrl } from './liffBookingGuide'
 import { BOOK_THEME as T, BOOK_TYPE as ty } from './bookTheme'
+import { trackPublicBookingEvent } from '../../../lib/ga4'
 
 function bookStepExtras(
   step: number,
@@ -404,6 +405,12 @@ export function BookWizardCore({
         },
       })
     }
+    trackPublicBookingEvent('booking_request', {
+      activity: form.activity ?? undefined,
+      headcount: form.headcount,
+      coach_choice: form.coachChoice,
+      date_count: form.preferredDates.length,
+    })
     const result = launchBookingInquiry(payload)
     if (result.mode === 'desktop-fallback') setDesktopMessage(result.message)
   }
