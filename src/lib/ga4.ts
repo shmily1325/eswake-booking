@@ -7,7 +7,7 @@ type GtagCommand = [command: string, ...args: unknown[]]
 
 declare global {
   interface Window {
-    dataLayer?: GtagCommand[]
+    dataLayer?: ArrayLike<unknown>[]
     gtag?: (...args: GtagCommand) => void
   }
 }
@@ -34,9 +34,13 @@ export function initializePublicBookingGa4() {
   initialized = true
 
   window.dataLayer = window.dataLayer ?? []
-  window.gtag = window.gtag ?? ((...args: GtagCommand) => {
-    window.dataLayer?.push(args)
-  })
+  if (!window.gtag) {
+    // gtag.js expects the native Arguments object, matching Google's official snippet.
+    window.gtag = function gtag() {
+      // eslint-disable-next-line prefer-rest-params
+      window.dataLayer?.push(arguments)
+    }
+  }
 
   const id = measurementId()
   window.gtag('js', new Date())

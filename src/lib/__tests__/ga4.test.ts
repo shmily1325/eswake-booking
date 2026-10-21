@@ -14,12 +14,13 @@ describe('public booking GA4', () => {
     initializePublicBookingGa4()
     initializePublicBookingGa4()
 
+    const commands = window.dataLayer?.map(command => Array.from(command))
     expect(document.querySelectorAll('#eswake-ga4')).toHaveLength(1)
-    expect(window.dataLayer).toEqual(expect.arrayContaining([
+    expect(commands).toEqual(expect.arrayContaining([
       ['config', 'G-H5KLGJRDGZ', { cookie_domain: 'auto' }],
       ['event', 'booking_landing', { source_site: 'other' }],
     ]))
-    expect(window.dataLayer?.filter(command => command[1] === 'booking_landing')).toHaveLength(1)
+    expect(commands?.filter(command => command[1] === 'booking_landing')).toHaveLength(1)
   })
 
   it('records a booking request without personal data', async () => {
@@ -33,7 +34,8 @@ describe('public booking GA4', () => {
       date_count: 1,
     })
 
-    expect(window.dataLayer).toContainEqual([
+    const commands = window.dataLayer?.map(command => Array.from(command))
+    expect(commands).toContainEqual([
       'event',
       'booking_request',
       {
