@@ -6,6 +6,7 @@ describe('public booking GA4', () => {
     document.head.innerHTML = ''
     delete window.dataLayer
     delete window.gtag
+    window.history.replaceState({}, '', '/')
   })
 
   it('initializes once and records the booking landing', async () => {
@@ -44,6 +45,29 @@ describe('public booking GA4', () => {
         coach_choice: 'none',
         date_count: 1,
       },
+    ])
+  })
+
+  it('records an official-site booking click from the tagged button URL', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/?utm_source=eswakeschool&utm_medium=website&utm_campaign=booking_button',
+    )
+    const { initializePublicBookingGa4 } = await import('../ga4')
+
+    initializePublicBookingGa4()
+
+    const commands = window.dataLayer?.map(command => Array.from(command))
+    expect(commands).toContainEqual([
+      'event',
+      'booking_click',
+      { source_site: 'official_site' },
+    ])
+    expect(commands).toContainEqual([
+      'event',
+      'booking_landing',
+      { source_site: 'official_site' },
     ])
   })
 })

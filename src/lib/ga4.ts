@@ -28,6 +28,13 @@ function officialSiteReferrer(): boolean {
   }
 }
 
+function isOfficialBookingButtonVisit(): boolean {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('utm_source') === 'eswakeschool'
+    && params.get('utm_medium') === 'website'
+    && params.get('utm_campaign') === 'booking_button'
+}
+
 /** 僅由公開預約入口呼叫，避免後台與商店流量混入預約追蹤。 */
 export function initializePublicBookingGa4() {
   if (initialized || typeof window === 'undefined' || typeof document === 'undefined') return
@@ -56,8 +63,15 @@ export function initializePublicBookingGa4() {
     document.head.appendChild(script)
   }
 
+  const fromOfficialButton = isOfficialBookingButtonVisit()
+  if (fromOfficialButton) {
+    window.gtag('event', 'booking_click', {
+      source_site: 'official_site',
+    })
+  }
+
   window.gtag('event', 'booking_landing', {
-    source_site: officialSiteReferrer() ? 'official_site' : 'other',
+    source_site: fromOfficialButton || officialSiteReferrer() ? 'official_site' : 'other',
   })
 }
 
