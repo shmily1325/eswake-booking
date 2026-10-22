@@ -33,6 +33,8 @@ export const BACKUP_TABLES = [
   'shop_order_items',
   'shop_order_settlements',
   'credit_lots',
+  'boat_voucher_conversion_rates',
+  'boat_voucher_balance_conversions',
   'transactions',
   'voucher_package_purchases',
   'voucher_package_competition_redemptions',

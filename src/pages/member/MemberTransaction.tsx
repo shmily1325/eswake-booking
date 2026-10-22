@@ -32,6 +32,11 @@ import {
 } from '../../components/CreditLotBalanceDisplay'
 import { VoucherPackageManagementDialog } from '../../components/VoucherPackageManagementDialog'
 import type { VoucherPackageCategory } from '../../lib/voucherPackages'
+import { BoatVoucherConversionDialog } from '../../components/BoatVoucherConversionDialog'
+import type {
+  BoatVoucherBalanceConversion,
+  BoatVoucherCategory,
+} from '../../lib/boatVoucherConversions'
 
 type StorageView = 'ledger' | 'year'
 
@@ -43,6 +48,17 @@ interface PackageManagementTarget {
   }
   voucherYear: number
   category: VoucherPackageCategory
+}
+
+interface ConversionTarget {
+  member: {
+    id: string
+    name: string
+    nickname: string | null
+  }
+  voucherYear: number
+  category: BoatVoucherCategory
+  conversion?: BoatVoucherBalanceConversion | null
 }
 
 const pageBg = designSystem.colors.background.main
@@ -78,6 +94,7 @@ export function MemberTransaction() {
   const [dialogInitialVoucherYear, setDialogInitialVoucherYear] = useState<number | null | undefined>()
   const [packageManagementTarget, setPackageManagementTarget] =
     useState<PackageManagementTarget | null>(null)
+  const [conversionTarget, setConversionTarget] = useState<ConversionTarget | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
   const [sortBy, setSortBy] = useState<'updatedAt' | 'lastLiffLogin'>('updatedAt')
@@ -91,7 +108,7 @@ export function MemberTransaction() {
   const openMemberFromYearBalance = async (ref: YearBalanceMemberRef) => {
     setDialogInitialTab('history')
     setDialogInitialCategory(ref.category)
-    setDialogInitialVoucherYear(undefined)
+    setDialogInitialVoucherYear(ref.voucherYear)
 
     const cached = members.find((m) => m.id === ref.id)
     if (cached) {
@@ -646,6 +663,17 @@ export function MemberTransaction() {
                 category,
               })
             }}
+            onConvert={({ member, voucherYear, category }) => {
+              setConversionTarget({
+                member: {
+                  id: member.id,
+                  name: member.name || member.nickname || '—',
+                  nickname: member.nickname,
+                },
+                voucherYear,
+                category,
+              })
+            }}
             refreshKey={yearPanelRefreshKey}
           />
         </div>
@@ -999,6 +1027,18 @@ export function MemberTransaction() {
           category={packageManagementTarget.category}
           onClose={() => setPackageManagementTarget(null)}
           onChanged={handleTransactionSuccess}
+        />
+      ) : null}
+
+      {conversionTarget ? (
+        <BoatVoucherConversionDialog
+          open
+          member={conversionTarget.member}
+          voucherYear={conversionTarget.voucherYear}
+          category={conversionTarget.category}
+          conversion={conversionTarget.conversion}
+          onClose={() => setConversionTarget(null)}
+          onSuccess={handleTransactionSuccess}
         />
       ) : null}
 

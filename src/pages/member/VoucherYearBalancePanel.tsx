@@ -22,6 +22,7 @@ import {
   type VoucherPackageCategory,
   type VoucherPackageOverviewRow,
 } from '../../lib/voucherPackages'
+import type { BoatVoucherCategory } from '../../lib/boatVoucherConversions'
 
 type LotCategory =
   | 'vip_voucher'
@@ -46,6 +47,7 @@ export interface YearBalanceMemberRef {
   name: string | null
   /** 點清冊列時帶入，開啟細帳歷史用 */
   category?: LotCategory
+  voucherYear?: number
 }
 
 interface PersonRemaining {
@@ -64,6 +66,11 @@ interface VoucherYearBalancePanelProps {
     member: YearBalanceMemberRef
     voucherYear: number
     category: VoucherPackageCategory
+  }) => void
+  onConvert: (target: {
+    member: YearBalanceMemberRef
+    voucherYear: number
+    category: BoatVoucherCategory
   }) => void
   /** 變更時重新載入 lots（例如細帳成功後） */
   refreshKey?: number
@@ -107,6 +114,7 @@ function formatAmount(category: LotCategory, value: number): string {
 export function VoucherYearBalancePanel({
   onOpenMember,
   onOpenPackage,
+  onConvert,
   refreshKey = 0,
 }: VoucherYearBalancePanelProps) {
   const { isMobile } = useResponsive()
@@ -468,7 +476,7 @@ export function VoucherYearBalancePanel({
                   <div
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr auto 16px',
+                      gridTemplateColumns: '1fr auto minmax(72px, auto)',
                       gap: designSystem.spacing.md,
                       padding: '12px 20px',
                       borderBottom: `1px solid ${designSystem.colors.border.light}`,
@@ -491,57 +499,40 @@ export function VoucherYearBalancePanel({
                   </div>
                 ) : null}
 
-                {section.people.map((person, index) => (
-                  <button
-                    key={`${section.category}-${person.memberId}`}
-                    type="button"
-                    data-track="voucher_year_open_member"
-                    aria-label={`查看 ${person.nickname} 的${section.label}餘額明細`}
-                    title="查看會員餘額明細"
-                    onClick={() => {
-                      const memberRef = {
-                        id: person.memberId,
-                        nickname: person.nickname,
-                        name: person.name,
+                {section.people.map((person, index) => {
+                  const canConvert =
+                    section.category !== 'vip_voucher' && person.remaining !== 0
+                  const openDetail = () => {
+                    const memberRef = {
+                      id: person.memberId,
+                      nickname: person.nickname,
+                      name: person.name,
+                      category: section.category,
+                      voucherYear: yearFilter ?? undefined,
+                    }
+                    if (
+                      yearFilter === VOUCHER_PACKAGE_YEAR &&
+                      person.packageSummary &&
+                      section.category !== 'vip_voucher'
+                    ) {
+                      onOpenPackage({
+                        member: memberRef,
+                        voucherYear: yearFilter,
                         category: section.category,
-                      }
-                      if (
-                        yearFilter === VOUCHER_PACKAGE_YEAR &&
-                        person.packageSummary &&
-                        section.category !== 'vip_voucher'
-                      ) {
-                        onOpenPackage({
-                          member: memberRef,
-                          voucherYear: yearFilter,
-                          category: section.category,
-                        })
-                      } else {
-                        onOpenMember(memberRef)
-                      }
-                    }}
-                    onMouseEnter={(event) => {
-                      event.currentTarget.style.background = designSystem.colors.background.hover
-                    }}
-                    onMouseLeave={(event) => {
-                      event.currentTarget.style.background = 'transparent'
-                    }}
-                    onFocus={(event) => {
-                      event.currentTarget.style.background = designSystem.colors.background.hover
-                    }}
-                    onBlur={(event) => {
-                      event.currentTarget.style.background = 'transparent'
-                    }}
+                      })
+                    } else {
+                      onOpenMember(memberRef)
+                    }
+                  }
+
+                  return (
+                  <div
+                    key={`${section.category}-${person.memberId}`}
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr auto 16px',
-                      gap: designSystem.spacing.md,
+                      gridTemplateColumns: '1fr auto minmax(72px, auto)',
                       alignItems: 'center',
                       width: '100%',
-                      textAlign: 'left',
-                      border: 'none',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      padding: isMobile ? '14px 16px' : '14px 20px',
                       borderTop:
                         index === 0
                           ? undefined
@@ -553,6 +544,40 @@ export function VoucherYearBalancePanel({
                       boxSizing: 'border-box',
                     }}
                   >
+                    <button
+                      type="button"
+                      data-track="voucher_year_open_member"
+                      aria-label={`查看 ${person.nickname} 的${section.label}餘額明細`}
+                      title="查看會員餘額明細"
+                      onClick={openDetail}
+                      onMouseEnter={(event) => {
+                        event.currentTarget.style.background = designSystem.colors.background.hover
+                      }}
+                      onMouseLeave={(event) => {
+                        event.currentTarget.style.background = 'transparent'
+                      }}
+                      onFocus={(event) => {
+                        event.currentTarget.style.background = designSystem.colors.background.hover
+                      }}
+                      onBlur={(event) => {
+                        event.currentTarget.style.background = 'transparent'
+                      }}
+                      style={{
+                        gridColumn: canConvert ? '1 / 3' : '1 / 4',
+                        display: 'grid',
+                        gridTemplateColumns: canConvert ? '1fr auto' : '1fr auto 16px',
+                        gap: designSystem.spacing.md,
+                        alignItems: 'center',
+                        width: '100%',
+                        minHeight: 64,
+                        padding: isMobile ? '14px 16px' : '14px 20px',
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'inherit',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                      }}
+                    >
                     <div style={{ minWidth: 0 }}>
                       <div
                         style={{
@@ -598,7 +623,7 @@ export function VoucherYearBalancePanel({
                             Number(person.packageSummary.competition_uses_granted || 0) > 0
                               ? `賽事 ${Number(person.packageSummary.competition_uses_used || 0)}/${Number(person.packageSummary.competition_uses_granted)}次`
                               : '',
-                          ].filter(Boolean).join(' · ') || '歷史方案紀錄'}
+                          ].filter(Boolean).join(' · ') || '歷史方案明細'}
                         </div>
                       ) : null}
                     </div>
@@ -619,18 +644,56 @@ export function VoucherYearBalancePanel({
                     >
                       {formatAmount(section.category, person.remaining)}
                     </div>
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        color: designSystem.colors.text.secondary,
-                        fontSize: getFontSize('bodyLarge', isMobile),
-                        lineHeight: 1,
-                      }}
-                    >
-                      ›
-                    </span>
-                  </button>
-                ))}
+                    {!canConvert ? (
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          color: designSystem.colors.text.secondary,
+                          fontSize: getFontSize('bodyLarge', isMobile),
+                          lineHeight: 1,
+                          textAlign: 'center',
+                        }}
+                      >
+                        ›
+                      </span>
+                    ) : null}
+                    </button>
+                    {canConvert ? (
+                      <button
+                        type="button"
+                        data-track="voucher_year_convert"
+                        onClick={() => {
+                          onConvert({
+                            member: {
+                              id: person.memberId,
+                              nickname: person.nickname,
+                              name: person.name,
+                              category: section.category,
+                            },
+                            voucherYear: yearFilter!,
+                            category: section.category as BoatVoucherCategory,
+                          })
+                        }}
+                        style={{
+                          border: `1px solid ${designSystem.colors.primary[500]}`,
+                          borderRadius: designSystem.borderRadius.md,
+                          background: designSystem.colors.background.card,
+                          color: designSystem.colors.primary[600],
+                          minHeight: 36,
+                          padding: isMobile ? '7px 9px' : '7px 12px',
+                          fontSize: getFontSize('button', isMobile),
+                          fontWeight: 650,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          marginRight: isMobile ? 16 : 20,
+                        }}
+                      >
+                        {person.remaining > 0 ? '轉儲值' : '補船券'}
+                      </button>
+                    ) : null}
+                  </div>
+                  )
+                })}
               </div>
             </section>
           ))}

@@ -1827,6 +1827,8 @@
             shop_order_items: { keyPath: 'id' },
             shop_order_settlements: { keyPath: 'id' },
             credit_lots: { keyPath: 'id' },
+            boat_voucher_conversion_rates: { keyPath: 'id' },
+            boat_voucher_balance_conversions: { keyPath: 'id' },
             transactions: { keyPath: 'id', autoIncrement: true },
             voucher_package_purchases: { keyPath: 'id' },
             voucher_package_competition_redemptions: { keyPath: 'id' },
@@ -1849,6 +1851,8 @@
         // 同版備份可能早於部分可選功能；缺少時以空表載入。
         const OPTIONAL_BACKUP_TABLES = new Set([
             'reservation_restriction_coaches',
+            'boat_voucher_conversion_rates',
+            'boat_voucher_balance_conversions',
             'voucher_package_purchases',
             'voucher_package_competition_redemptions',
             'voucher_package_board_applications'

@@ -1890,7 +1890,7 @@ function DeductionItemRow({
           }}>
             <div>
               <div style={{ fontSize: getFontSize('body', isMobile), fontWeight: '600', color: designSystem.colors.warning[700] }}>
-                方案記錄
+                方案明細
               </div>
               <div style={{ fontSize: getFontSize('bodySmall', isMobile), color: designSystem.colors.warning[700] }}>
                 不扣除任何餘額，僅記錄方案使用（請在下方填寫方案名稱）

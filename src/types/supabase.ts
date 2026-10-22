@@ -1592,6 +1592,107 @@ export type Database = {
           },
         ]
       }
+      boat_voucher_conversion_rates: {
+        Row: {
+          id: string
+          effective_year: number
+          category: string
+          package_hours: number
+          package_minutes: number
+          package_price: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          effective_year: number
+          category: string
+          package_hours: number
+          package_minutes: number
+          package_price: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          effective_year?: number
+          category?: string
+          package_hours?: number
+          package_minutes?: number
+          package_price?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      boat_voucher_balance_conversions: {
+        Row: {
+          id: string
+          request_key: string
+          member_id: string
+          category: string
+          voucher_year: number
+          direction: string
+          package_hours: number
+          rate_effective_year: number
+          package_minutes: number
+          package_price: number
+          minutes: number
+          suggested_amount: number
+          balance_amount: number
+          transaction_date: string
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          request_key: string
+          member_id: string
+          category: string
+          voucher_year: number
+          direction: string
+          package_hours: number
+          rate_effective_year: number
+          package_minutes: number
+          package_price: number
+          minutes: number
+          suggested_amount: number
+          balance_amount: number
+          transaction_date: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          request_key?: string
+          member_id?: string
+          category?: string
+          voucher_year?: number
+          direction?: string
+          package_hours?: number
+          rate_effective_year?: number
+          package_minutes?: number
+          package_price?: number
+          minutes?: number
+          suggested_amount?: number
+          balance_amount?: number
+          transaction_date?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'boat_voucher_balance_conversions_member_id_fkey'
+            columns: ['member_id']
+            isOneToOne: false
+            referencedRelation: 'members'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       voucher_package_purchases: {
         Row: {
           id: string
@@ -1794,6 +1895,7 @@ export type Database = {
         Row: {
           adjust_type: string | null
           amount: number | null
+          balance_conversion_id: string | null
           balance_after: number | null
           boat_voucher_g21_panther_minutes_after: number | null
           boat_voucher_g23_minutes_after: number | null
@@ -1821,6 +1923,7 @@ export type Database = {
         Insert: {
           adjust_type?: string | null
           amount?: number | null
+          balance_conversion_id?: string | null
           balance_after?: number | null
           boat_voucher_g21_panther_minutes_after?: number | null
           boat_voucher_g23_minutes_after?: number | null
@@ -1848,6 +1951,7 @@ export type Database = {
         Update: {
           adjust_type?: string | null
           amount?: number | null
+          balance_conversion_id?: string | null
           balance_after?: number | null
           boat_voucher_g21_panther_minutes_after?: number | null
           boat_voucher_g23_minutes_after?: number | null
@@ -1873,6 +1977,13 @@ export type Database = {
           voucher_package_managed?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: 'transactions_balance_conversion_id_fkey'
+            columns: ['balance_conversion_id']
+            isOneToOne: false
+            referencedRelation: 'boat_voucher_balance_conversions'
+            referencedColumns: ['id']
+          },
           {
             foreignKeyName: 'transactions_booking_participant_id_fkey'
             columns: ['booking_participant_id']
@@ -2310,6 +2421,57 @@ export type Database = {
           p_category: string
           p_line_user_id: string
           p_since_date?: string | null
+        }
+        Returns: Json
+      }
+      get_boat_voucher_conversion_rate: {
+        Args: {
+          p_voucher_year: number
+          p_category: string
+          p_package_hours: number
+        }
+        Returns: {
+          effective_year: number
+          category: string
+          package_hours: number
+          package_minutes: number
+          package_price: number
+        }[]
+      }
+      get_member_boat_voucher_balance_conversions: {
+        Args: { p_member_id: string }
+        Returns: Database['public']['Tables']['boat_voucher_balance_conversions']['Row'][]
+      }
+      create_boat_voucher_balance_conversion: {
+        Args: {
+          p_request_key: string
+          p_member_id: string
+          p_category: string
+          p_voucher_year: number
+          p_package_hours?: number
+          p_minutes?: number | null
+          p_balance_amount?: number | null
+          p_transaction_date?: string | null
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      update_boat_voucher_balance_conversion: {
+        Args: {
+          p_conversion_id: string
+          p_member_id: string
+          p_package_hours: number
+          p_minutes: number
+          p_balance_amount: number
+          p_transaction_date: string
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      delete_boat_voucher_balance_conversion: {
+        Args: {
+          p_conversion_id: string
+          p_member_id: string
         }
         Returns: Json
       }
