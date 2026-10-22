@@ -1693,6 +1693,56 @@ export type Database = {
           },
         ]
       }
+      vip_voucher_balance_conversions: {
+        Row: {
+          id: string
+          request_key: string
+          member_id: string
+          voucher_year: number
+          direction: string
+          amount: number
+          transaction_date: string
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          request_key: string
+          member_id: string
+          voucher_year: number
+          direction: string
+          amount: number
+          transaction_date: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          request_key?: string
+          member_id?: string
+          voucher_year?: number
+          direction?: string
+          amount?: number
+          transaction_date?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'vip_voucher_balance_conversions_member_id_fkey'
+            columns: ['member_id']
+            isOneToOne: false
+            referencedRelation: 'members'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       voucher_package_purchases: {
         Row: {
           id: string
@@ -1915,6 +1965,7 @@ export type Database = {
           shop_order_id: string | null
           transaction_date: string
           transaction_type: string
+          vip_balance_conversion_id: string | null
           vip_voucher_amount_after: number | null
           voucher_year: number | null
           lot_allocations: Json | null
@@ -1943,6 +1994,7 @@ export type Database = {
           shop_order_id?: string | null
           transaction_date: string
           transaction_type: string
+          vip_balance_conversion_id?: string | null
           vip_voucher_amount_after?: number | null
           voucher_year?: number | null
           lot_allocations?: Json | null
@@ -1971,6 +2023,7 @@ export type Database = {
           shop_order_id?: string | null
           transaction_date?: string
           transaction_type?: string
+          vip_balance_conversion_id?: string | null
           vip_voucher_amount_after?: number | null
           voucher_year?: number | null
           lot_allocations?: Json | null
@@ -2003,6 +2056,13 @@ export type Database = {
             columns: ['related_booking_id']
             isOneToOne: false
             referencedRelation: 'bookings'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'transactions_vip_balance_conversion_id_fkey'
+            columns: ['vip_balance_conversion_id']
+            isOneToOne: false
+            referencedRelation: 'vip_voucher_balance_conversions'
             referencedColumns: ['id']
           },
         ]
@@ -2469,6 +2529,38 @@ export type Database = {
         Returns: Json
       }
       delete_boat_voucher_balance_conversion: {
+        Args: {
+          p_conversion_id: string
+          p_member_id: string
+        }
+        Returns: Json
+      }
+      get_member_vip_voucher_balance_conversions: {
+        Args: { p_member_id: string }
+        Returns: Database['public']['Tables']['vip_voucher_balance_conversions']['Row'][]
+      }
+      create_vip_voucher_balance_conversion: {
+        Args: {
+          p_request_key: string
+          p_member_id: string
+          p_voucher_year: number
+          p_amount: number
+          p_transaction_date?: string | null
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      update_vip_voucher_balance_conversion: {
+        Args: {
+          p_conversion_id: string
+          p_member_id: string
+          p_amount: number
+          p_transaction_date: string
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      delete_vip_voucher_balance_conversion: {
         Args: {
           p_conversion_id: string
           p_member_id: string

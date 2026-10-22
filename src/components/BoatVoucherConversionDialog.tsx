@@ -72,6 +72,7 @@ export function BoatVoucherConversionDialog({
   const [transactionDate, setTransactionDate] = useState(getLocalDateString())
   const [notes, setNotes] = useState('')
   const preserveInitialAmount = useRef(false)
+  const requestKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -79,6 +80,9 @@ export function BoatVoucherConversionDialog({
     setLoading(true)
     setError(null)
     setBalances(null)
+    if (!conversion && requestKeyRef.current === null) {
+      requestKeyRef.current = createBoatVoucherConversionRequestKey()
+    }
     const initialHours = conversion?.package_hours ?? 20
     setPackageHours(initialHours)
     setTransactionDate(conversion?.transaction_date ?? getLocalDateString())
@@ -143,6 +147,10 @@ export function BoatVoucherConversionDialog({
       cancelled = true
     }
   }, [open, member.id, category, voucherYear, conversion])
+
+  useEffect(() => {
+    if (!open) requestKeyRef.current = null
+  }, [open])
 
   useEffect(() => {
     if (!open || loading) return
@@ -235,8 +243,11 @@ export function BoatVoucherConversionDialog({
           notes,
         })
       } else {
+        const requestKey =
+          requestKeyRef.current ?? createBoatVoucherConversionRequestKey()
+        requestKeyRef.current = requestKey
         await createBoatVoucherBalanceConversion({
-          requestKey: createBoatVoucherConversionRequestKey(),
+          requestKey,
           memberId: member.id,
           category,
           voucherYear,

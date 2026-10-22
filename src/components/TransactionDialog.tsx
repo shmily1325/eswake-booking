@@ -30,6 +30,11 @@ import {
   getMemberBoatVoucherBalanceConversions,
   type BoatVoucherBalanceConversion,
 } from '../lib/boatVoucherConversions'
+import { VipVoucherConversionDialog } from './VipVoucherConversionDialog'
+import {
+  getMemberVipVoucherBalanceConversions,
+  type VipVoucherBalanceConversion,
+} from '../lib/vipVoucherConversions'
 
 interface TransactionDialogProps {
   open: boolean
@@ -71,6 +76,7 @@ interface Transaction {
   gift_boat_hours_after: number | null
   voucher_package_managed: boolean
   balance_conversion_id: string | null
+  vip_balance_conversion_id: string | null
 }
 
 // 六個項目的配置
@@ -241,6 +247,10 @@ export function TransactionDialog({
   const [balanceConversions, setBalanceConversions] = useState<BoatVoucherBalanceConversion[]>([])
   const [editingBalanceConversion, setEditingBalanceConversion] =
     useState<BoatVoucherBalanceConversion | null>(null)
+  const [vipBalanceConversions, setVipBalanceConversions] =
+    useState<VipVoucherBalanceConversion[]>([])
+  const [editingVipBalanceConversion, setEditingVipBalanceConversion] =
+    useState<VipVoucherBalanceConversion | null>(null)
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     const today = getLocalDateString() // YYYY-MM-DD
     return today.substring(0, 7) // YYYY-MM
@@ -337,10 +347,11 @@ export function TransactionDialog({
     setLoadingHistory(true)
     setTransactions([])
     setBalanceConversions([])
+    setVipBalanceConversions([])
     try {
       let query = supabase
         .from('transactions')
-        .select('id, created_at, transaction_date, transaction_type, category, adjust_type, amount, minutes, description, notes, voucher_year, balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after, voucher_package_managed, balance_conversion_id')
+        .select('id, created_at, transaction_date, transaction_type, category, adjust_type, amount, minutes, description, notes, voucher_year, balance_after, vip_voucher_amount_after, designated_lesson_minutes_after, boat_voucher_g23_minutes_after, boat_voucher_g21_panther_minutes_after, gift_boat_hours_after, voucher_package_managed, balance_conversion_id, vip_balance_conversion_id')
         .eq('member_id', member.id)
         .order('transaction_date', { ascending: false })
         .order('created_at', { ascending: false })
@@ -361,8 +372,12 @@ export function TransactionDialog({
       const nextConversions = nextTransactions.some((tx) => tx.balance_conversion_id)
         ? await getMemberBoatVoucherBalanceConversions(member.id)
         : []
+      const nextVipConversions = nextTransactions.some((tx) => tx.vip_balance_conversion_id)
+        ? await getMemberVipVoucherBalanceConversions(member.id)
+        : []
       setTransactions(nextTransactions)
       setBalanceConversions(nextConversions)
+      setVipBalanceConversions(nextVipConversions)
     } catch (error: unknown) {
       console.error('加載交易記錄失敗:', error)
       toast.error('加載交易記錄失敗')
@@ -1534,9 +1549,14 @@ export function TransactionDialog({
               if (categoryFilter === 'all') {
                 const seenConversions = new Set<string>()
                 filteredTransactions = filteredTransactions.filter((tx) => {
-                  if (!tx.balance_conversion_id) return true
-                  if (seenConversions.has(tx.balance_conversion_id)) return false
-                  seenConversions.add(tx.balance_conversion_id)
+                  const conversionKey = tx.balance_conversion_id
+                    ? `boat:${tx.balance_conversion_id}`
+                    : tx.vip_balance_conversion_id
+                      ? `vip:${tx.vip_balance_conversion_id}`
+                      : null
+                  if (!conversionKey) return true
+                  if (seenConversions.has(conversionKey)) return false
+                  seenConversions.add(conversionKey)
                   return true
                 })
               }
@@ -1558,6 +1578,11 @@ export function TransactionDialog({
                   {filteredTransactions.map((tx) => {
                   const balanceConversion = tx.balance_conversion_id
                     ? balanceConversions.find((item) => item.id === tx.balance_conversion_id)
+                    : null
+                  const vipBalanceConversion = tx.vip_balance_conversion_id
+                    ? vipBalanceConversions.find(
+                        (item) => item.id === tx.vip_balance_conversion_id,
+                      )
                     : null
                   if (balanceConversion) {
                     const isVoucherToBalance =
@@ -1643,7 +1668,91 @@ export function TransactionDialog({
                       </button>
                     )
                   }
-                  if (tx.balance_conversion_id) {
+                  if (vipBalanceConversion) {
+                    const isVipToBalance =
+                      vipBalanceConversion.direction === 'vip_to_balance'
+                    return (
+                      <button
+                        key={`vip-conversion-${vipBalanceConversion.id}`}
+                        type="button"
+                        onClick={() => setEditingVipBalanceConversion(vipBalanceConversion)}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          background: designSystem.colors.background.card,
+                          padding: '14px',
+                          borderRadius: designSystem.borderRadius.lg,
+                          border: `1px solid ${designSystem.colors.border.light}`,
+                          borderLeft: `3px solid ${designSystem.colors.info[500]}`,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 12,
+                          alignItems: 'flex-start',
+                        }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{
+                              color: designSystem.colors.text.primary,
+                              fontSize: getFontSize('body', isMobile),
+                              fontWeight: 650,
+                            }}>
+                              {isVipToBalance ? 'VIP轉儲值' : '儲值補VIP'}
+                            </div>
+                            <div style={{
+                              marginTop: 4,
+                              color: designSystem.colors.text.secondary,
+                              fontSize: getFontSize('bodySmall', isMobile),
+                            }}>
+                              {vipBalanceConversion.voucher_year} VIP · 等值轉換
+                            </div>
+                            <div style={{
+                              marginTop: 4,
+                              color: designSystem.colors.text.disabled,
+                              fontSize: getFontSize('bodySmall', isMobile),
+                            }}>
+                              {vipBalanceConversion.transaction_date}
+                              {vipBalanceConversion.notes
+                                ? ` · ${vipBalanceConversion.notes}`
+                                : ''}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <div style={{
+                              color: isVipToBalance
+                                ? designSystem.colors.danger[700]
+                                : designSystem.colors.success[700],
+                              fontWeight: 700,
+                              fontSize: getFontSize('body', isMobile),
+                            }}>
+                              {isVipToBalance ? '-' : '+'}${vipBalanceConversion.amount.toLocaleString()} VIP
+                            </div>
+                            <div style={{
+                              marginTop: 3,
+                              color: isVipToBalance
+                                ? designSystem.colors.success[700]
+                                : designSystem.colors.danger[700],
+                              fontWeight: 700,
+                              fontSize: getFontSize('body', isMobile),
+                            }}>
+                              {isVipToBalance ? '+' : '-'}${vipBalanceConversion.amount.toLocaleString()} 儲值
+                            </div>
+                            <div style={{
+                              marginTop: 5,
+                              color: designSystem.colors.primary[600],
+                              fontSize: getFontSize('caption', isMobile),
+                              fontWeight: 650,
+                            }}>
+                              修改 ›
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  }
+                  if (tx.balance_conversion_id || tx.vip_balance_conversion_id) {
                     return (
                       <div
                         key={`conversion-unavailable-${tx.id}`}
@@ -2030,6 +2139,23 @@ export function TransactionDialog({
           voucherYear={editingBalanceConversion.voucher_year}
           conversion={editingBalanceConversion}
           onClose={() => setEditingBalanceConversion(null)}
+          onSuccess={async () => {
+            await Promise.all([loadTransactions(), loadCreditLots()])
+            onSuccess()
+          }}
+        />
+      ) : null}
+      {editingVipBalanceConversion ? (
+        <VipVoucherConversionDialog
+          open
+          member={{
+            id: member.id,
+            name: member.name,
+            nickname: member.nickname,
+          }}
+          voucherYear={editingVipBalanceConversion.voucher_year}
+          conversion={editingVipBalanceConversion}
+          onClose={() => setEditingVipBalanceConversion(null)}
           onSuccess={async () => {
             await Promise.all([loadTransactions(), loadCreditLots()])
             onSuccess()

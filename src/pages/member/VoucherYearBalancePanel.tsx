@@ -22,7 +22,6 @@ import {
   type VoucherPackageCategory,
   type VoucherPackageOverviewRow,
 } from '../../lib/voucherPackages'
-import type { BoatVoucherCategory } from '../../lib/boatVoucherConversions'
 
 type LotCategory =
   | 'vip_voucher'
@@ -70,7 +69,7 @@ interface VoucherYearBalancePanelProps {
   onConvert: (target: {
     member: YearBalanceMemberRef
     voucherYear: number
-    category: BoatVoucherCategory
+    category: LotCategory
   }) => void
   /** 變更時重新載入 lots（例如細帳成功後） */
   refreshKey?: number
@@ -500,8 +499,7 @@ export function VoucherYearBalancePanel({
                 ) : null}
 
                 {section.people.map((person, index) => {
-                  const canConvert =
-                    section.category !== 'vip_voucher' && person.remaining !== 0
+                  const canConvert = person.remaining !== 0
                   const openDetail = () => {
                     const memberRef = {
                       id: person.memberId,
@@ -671,7 +669,7 @@ export function VoucherYearBalancePanel({
                               category: section.category,
                             },
                             voucherYear: yearFilter!,
-                            category: section.category as BoatVoucherCategory,
+                            category: section.category,
                           })
                         }}
                         style={{
@@ -688,7 +686,11 @@ export function VoucherYearBalancePanel({
                           marginRight: isMobile ? 16 : 20,
                         }}
                       >
-                        {person.remaining > 0 ? '轉儲值' : '補船券'}
+                        {person.remaining > 0
+                          ? '轉儲值'
+                          : section.category === 'vip_voucher'
+                            ? '補VIP'
+                            : '補船券'}
                       </button>
                     ) : null}
                   </div>

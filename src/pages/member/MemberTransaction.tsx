@@ -37,6 +37,8 @@ import type {
   BoatVoucherBalanceConversion,
   BoatVoucherCategory,
 } from '../../lib/boatVoucherConversions'
+import { VipVoucherConversionDialog } from '../../components/VipVoucherConversionDialog'
+import type { VipVoucherBalanceConversion } from '../../lib/vipVoucherConversions'
 
 type StorageView = 'ledger' | 'year'
 
@@ -50,16 +52,24 @@ interface PackageManagementTarget {
   category: VoucherPackageCategory
 }
 
-interface ConversionTarget {
+interface ConversionTargetBase {
   member: {
     id: string
     name: string
     nickname: string | null
   }
   voucherYear: number
-  category: BoatVoucherCategory
-  conversion?: BoatVoucherBalanceConversion | null
 }
+
+type ConversionTarget =
+  | (ConversionTargetBase & {
+      category: BoatVoucherCategory
+      conversion?: BoatVoucherBalanceConversion | null
+    })
+  | (ConversionTargetBase & {
+      category: 'vip_voucher'
+      conversion?: VipVoucherBalanceConversion | null
+    })
 
 const pageBg = designSystem.colors.background.main
 const cardBorder = `1px solid ${designSystem.colors.border.light}`
@@ -664,11 +674,22 @@ export function MemberTransaction() {
               })
             }}
             onConvert={({ member, voucherYear, category }) => {
+              const targetMember = {
+                id: member.id,
+                name: member.name || member.nickname || '—',
+                nickname: member.nickname,
+              }
+              if (category === 'vip_voucher') {
+                setConversionTarget({
+                  member: targetMember,
+                  voucherYear,
+                  category,
+                })
+                return
+              }
               setConversionTarget({
                 member: {
-                  id: member.id,
-                  name: member.name || member.nickname || '—',
-                  nickname: member.nickname,
+                  ...targetMember,
                 },
                 voucherYear,
                 category,
@@ -1030,7 +1051,16 @@ export function MemberTransaction() {
         />
       ) : null}
 
-      {conversionTarget ? (
+      {conversionTarget?.category === 'vip_voucher' ? (
+        <VipVoucherConversionDialog
+          open
+          member={conversionTarget.member}
+          voucherYear={conversionTarget.voucherYear}
+          conversion={conversionTarget.conversion}
+          onClose={() => setConversionTarget(null)}
+          onSuccess={handleTransactionSuccess}
+        />
+      ) : conversionTarget ? (
         <BoatVoucherConversionDialog
           open
           member={conversionTarget.member}
