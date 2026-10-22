@@ -45,7 +45,7 @@ try {
 } catch {
   fail('backup manifest is invalid JSON');
 }
-if (manifest.formatVersion !== 4) fail(`unsupported format version ${manifest.formatVersion}`);
+if (manifest.formatVersion !== 5) fail(`unsupported format version ${manifest.formatVersion}`);
 
 function psql(args) {
   const result = spawnSync('psql', [databaseUrl, '-v', 'ON_ERROR_STOP=1', ...args], {

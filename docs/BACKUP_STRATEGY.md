@@ -35,10 +35,12 @@ that streak.
 
 ## What each layer restores
 
-- Data-only SQL format v4 restores the operational public tables, including the
-  `credit_lots` yearly voucher ledger, after the same migrations have been applied.
-- Earlier v3 files predate the `credit_lots` contract and must not be treated as
-  complete current recovery points.
+- Data-only SQL format v5 restores the operational public tables, including the
+  `credit_lots` yearly voucher ledger, coach-designated-hour ledgers, product
+  brands, and LINE reminder state, after the same migrations have been applied.
+- Earlier v4 files omit those newly protected tables and must not be treated as
+  complete current recovery points. Format v3 also predates the `credit_lots`
+  contract.
 - `product-images` manifests restore Supabase Storage bytes and repair public
   URLs when the target project URL changes.
 - The quarterly DR export contains roles, schema, data including Auth records,

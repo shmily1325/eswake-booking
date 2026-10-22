@@ -14,6 +14,7 @@ export const BACKUP_TABLES = [
   'billing_relations',
   'board_storage',
   'size_charts',
+  'product_brands',
   'products',
   'shop_discount_presets',
   'product_variants',
@@ -25,6 +26,9 @@ export const BACKUP_TABLES = [
   'booking_drivers',
   'coach_reports',
   'booking_participants',
+  'coach_designated_hour_entries',
+  'coach_designated_hour_report_skips',
+  'coach_designated_hour_revisions',
   'shop_orders',
   'shop_order_items',
   'shop_order_settlements',
@@ -39,6 +43,12 @@ export const BACKUP_TABLES = [
   'reservation_restriction_coaches',
   'audit_log',
   'system_settings',
+  'line_webhook_contacts',
+  'line_webhook_events',
+  'line_reminder_guests',
+  'line_reminder_mappings',
+  'line_reminder_send_logs',
+  'line_push_daily_official',
   'line_bindings',
   'backup_logs',
 ] as const
@@ -48,9 +58,13 @@ export type BackupTable = (typeof BACKUP_TABLES)[number]
 /** Non-operational analytics data intentionally omitted from disaster-recovery backups. */
 export const EXCLUDED_BACKUP_TABLES = ['user_click_events'] as const
 
-export const BACKUP_FORMAT_VERSION = 4
+export const BACKUP_FORMAT_VERSION = 5
 
 export const TABLE_ORDER_COLUMN: Partial<Record<BackupTable, string>> = {
+  coach_designated_hour_report_skips: 'booking_participant_id',
+  line_webhook_contacts: 'line_user_id',
+  line_webhook_events: 'webhook_event_id',
+  line_push_daily_official: 'sent_date',
   shop_order_no_seq: 'seq_date',
   reservation_restriction_coaches: 'restriction_id',
 }
@@ -64,4 +78,6 @@ export const JSONB_COLUMNS = new Set([
   'voucher_package_competition_redemptions.purchase_allocations',
   'voucher_package_competition_redemptions.voucher_lot_allocations',
   'voucher_package_board_applications.purchase_allocations',
+  'coach_designated_hour_revisions.before_data',
+  'coach_designated_hour_revisions.after_data',
 ])

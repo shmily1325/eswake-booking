@@ -11,11 +11,13 @@
 The application-managed Google Drive and Windows backups continue to work after
 the Supabase project is downgraded from Pro.
 
-Database backups use format v4 and include the `credit_lots` yearly voucher
-ledger. Format v3 predates that recovery contract and must not be accepted as a
-complete current backup. Immediately after deploying the v4 code, run the
-Google Drive database backup and Windows task once so the first v4 recovery
-points replace the old health status.
+Database backups use format v5 and include the `credit_lots` yearly voucher
+ledger, coach-designated-hour ledgers, product brands, and LINE reminder state.
+Format v4 omits those newly protected tables, while format v3 also predates the
+`credit_lots` recovery contract. Neither older format is a complete current
+backup. Immediately after deploying the v5 code, run the Google Drive database
+backup and Windows task once so the first v5 recovery points replace the old
+health status.
 
 The product-image cloud job is resumable. A `202 running` result is expected
 while it advances through inventory, sync, deletion reconciliation, and

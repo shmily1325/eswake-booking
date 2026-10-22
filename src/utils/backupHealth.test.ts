@@ -12,7 +12,7 @@ function log(overrides: Partial<BackupHealthLog> = {}): BackupHealthLog {
     status: 'success',
     checksum: 'a'.repeat(64),
     file_size_bytes: 100,
-    format_version: 4,
+    format_version: 5,
     created_at: '2026-07-22T00:00:00.000Z',
     ...overrides,
   }

@@ -190,8 +190,16 @@ function sqlLiteral(value: unknown, table: BackupTable, column: string): string 
 }
 
 function sequenceResetSql(): string {
+  const tablesWithoutIdColumn = new Set<BackupTable>([
+    'coach_designated_hour_report_skips',
+    'line_webhook_contacts',
+    'line_webhook_events',
+    'line_push_daily_official',
+    'reservation_restriction_coaches',
+    'shop_order_no_seq',
+  ])
   const tables = BACKUP_TABLES.filter(
-    (table) => table !== 'shop_order_no_seq' && table !== 'reservation_restriction_coaches',
+    (table) => !tablesWithoutIdColumn.has(table),
   )
     .map((table) => `'${table}'`)
     .join(', ')

@@ -56,7 +56,7 @@ describe('generateSqlBackup', () => {
     const manifestLine = sql.split('\n').find((line) => line.startsWith('-- ESWAKE_BACKUP_MANIFEST: '))
     const manifest = JSON.parse(manifestLine!.replace('-- ESWAKE_BACKUP_MANIFEST: ', ''))
     expect(manifest).toMatchObject({
-      formatVersion: 4,
+      formatVersion: 5,
       totalRecords: 3,
       stats: { products: 1, product_variants: 1 },
     })
@@ -70,8 +70,18 @@ describe('generateSqlBackup', () => {
     expect(BACKUP_TABLES).toContain('reservation_restrictions')
     expect(BACKUP_TABLES).toContain('reservation_restriction_coaches')
     expect(BACKUP_TABLES).toContain('size_charts')
+    expect(BACKUP_TABLES).toContain('product_brands')
     expect(BACKUP_TABLES).toContain('shop_discount_presets')
     expect(BACKUP_TABLES).toContain('credit_lots')
+    expect(BACKUP_TABLES).toContain('coach_designated_hour_entries')
+    expect(BACKUP_TABLES).toContain('coach_designated_hour_report_skips')
+    expect(BACKUP_TABLES).toContain('coach_designated_hour_revisions')
+    expect(BACKUP_TABLES).toContain('line_webhook_contacts')
+    expect(BACKUP_TABLES).toContain('line_webhook_events')
+    expect(BACKUP_TABLES).toContain('line_reminder_guests')
+    expect(BACKUP_TABLES).toContain('line_reminder_mappings')
+    expect(BACKUP_TABLES).toContain('line_reminder_send_logs')
+    expect(BACKUP_TABLES).toContain('line_push_daily_official')
     expect(BACKUP_TABLES.indexOf('daily_announcements'))
       .toBeLessThan(BACKUP_TABLES.indexOf('reservation_restrictions'))
     expect(BACKUP_TABLES.indexOf('reservation_restrictions'))
@@ -80,12 +90,24 @@ describe('generateSqlBackup', () => {
       .toBeLessThan(BACKUP_TABLES.indexOf('reservation_restriction_coaches'))
     expect(BACKUP_TABLES.indexOf('size_charts'))
       .toBeLessThan(BACKUP_TABLES.indexOf('products'))
+    expect(BACKUP_TABLES.indexOf('product_brands'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('products'))
     expect(BACKUP_TABLES.indexOf('shop_discount_presets'))
       .toBeLessThan(BACKUP_TABLES.indexOf('product_variants'))
     expect(BACKUP_TABLES.indexOf('bookings'))
       .toBeLessThan(BACKUP_TABLES.indexOf('booking_members'))
     expect(BACKUP_TABLES.indexOf('credit_lots'))
       .toBeLessThan(BACKUP_TABLES.indexOf('transactions'))
+    expect(BACKUP_TABLES.indexOf('booking_participants'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('coach_designated_hour_entries'))
+    expect(BACKUP_TABLES.indexOf('coach_designated_hour_entries'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('coach_designated_hour_revisions'))
+    expect(BACKUP_TABLES.indexOf('line_webhook_contacts'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('line_webhook_events'))
+    expect(BACKUP_TABLES.indexOf('line_webhook_contacts'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('line_reminder_guests'))
+    expect(BACKUP_TABLES.indexOf('line_reminder_guests'))
+      .toBeLessThan(BACKUP_TABLES.indexOf('line_reminder_mappings'))
     expect(new Set(BACKUP_TABLES).size).toBe(BACKUP_TABLES.length)
     expect(EXCLUDED_BACKUP_TABLES).toEqual(['user_click_events'])
     expect(BACKUP_TABLES).not.toContain('user_click_events')
@@ -99,6 +121,22 @@ describe('generateSqlBackup', () => {
     expect(sql.match(/^COMMIT;$/gm)).toHaveLength(1)
     expect(sql).toContain('-- 表: reservation_restrictions (0 筆記錄)')
     expect(sql).toContain('-- 表: reservation_restriction_coaches (0 筆記錄)')
+  })
+
+  it('restores designated-hour revision snapshots as JSONB', () => {
+    const { data, stats } = emptyBackup()
+    data.coach_designated_hour_revisions = [{
+      id: 1,
+      entry_id: 10,
+      before_data: { regular_minutes: 60, gift_minutes: 30 },
+      after_data: null,
+    }]
+    stats.coach_designated_hour_revisions = 1
+
+    const sql = generateSqlBackup(data, stats, '2026-10-21T09:00:00')
+
+    expect(sql).toContain(`'{"regular_minutes":60,"gift_minutes":30}'::jsonb`)
+    expect(sql).toContain('INSERT INTO coach_designated_hour_revisions')
   })
 
   it('writes size charts and discount presets before the rows that reference them', () => {

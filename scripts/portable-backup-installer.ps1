@@ -528,7 +528,7 @@ try {
         throw 'SHA-256 校驗失敗，下載檔案可能不完整。'
     }
     $manifest = Get-BackupManifest -Path $tempPath
-    if ($null -eq $manifest -or [int]$manifest.formatVersion -ne 4) {
+    if ($null -eq $manifest -or [int]$manifest.formatVersion -ne 5) {
         throw 'SQL 備份 manifest 缺失或版本不支援。'
     }
 

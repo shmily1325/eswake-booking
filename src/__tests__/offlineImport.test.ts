@@ -27,12 +27,12 @@ type OfflineWindow = Window & {
   showMemberManagement(): Promise<void>
 }
 
-function asOfflineV4Backup(sql: string, creditLots: CreditLotFixture[] = []): string {
+function asOfflineV5Backup(sql: string, creditLots: CreditLotFixture[] = []): string {
   const withManifest = sql.replace(
     /^-- ESWAKE_BACKUP_MANIFEST: (.+)$/m,
     (_, rawManifest: string) => {
       const manifest = JSON.parse(rawManifest)
-      manifest.formatVersion = 4
+      manifest.formatVersion = 5
       if (!manifest.tables.includes('credit_lots')) {
         const transactionIndex = manifest.tables.indexOf('transactions')
         manifest.tables.splice(transactionIndex, 0, 'credit_lots')
@@ -59,7 +59,7 @@ function backup(memberCount = 1, memberName = 'Member 1'): string {
     name: index === 0 ? memberName : `Member ${index + 1}`,
   }))
   stats.members = memberCount
-  return asOfflineV4Backup(generateSqlBackup(data, stats, '2026-07-16T10:00:00'))
+  return asOfflineV5Backup(generateSqlBackup(data, stats, '2026-07-16T10:00:00'))
 }
 
 function recoveryPageBackup(): string {
@@ -144,7 +144,7 @@ function recoveryPageBackup(): string {
   const stats = Object.fromEntries(
     BACKUP_TABLES.map((table) => [table, data[table].length]),
   ) as BackupStats
-  return asOfflineV4Backup(
+  return asOfflineV5Backup(
     generateSqlBackup(data, stats, '2026-07-20T12:00:00Z'),
     [
       {
@@ -266,13 +266,13 @@ describe('offline SQL import', () => {
     window.close()
   })
 
-  it('imports v4 credit lots and renders per-year voucher balances', async () => {
+  it('imports v5 credit lots and renders per-year voucher balances', async () => {
     const window = createOfflineWindow()
     const offlineWindow = window as OfflineWindow
     const sql = recoveryPageBackup()
 
     await offlineWindow.loadSQLFile({
-      name: 'credit-lots-v4.sql',
+      name: 'credit-lots-v5.sql',
       size: sql.length,
       text: async () => sql,
     })
@@ -313,7 +313,7 @@ describe('offline SQL import', () => {
   it('rejects legacy v3 backups that omit the yearly voucher ledger contract', async () => {
     const window = createOfflineWindow()
     const offlineWindow = window as OfflineWindow
-    const sql = backup(1).replace('"formatVersion":4', '"formatVersion":3')
+    const sql = backup(1).replace('"formatVersion":5', '"formatVersion":3')
 
     await offlineWindow.loadSQLFile({
       name: 'legacy-v3.sql',

@@ -1794,8 +1794,8 @@
         // 全域變數 - 使用 IndexedDB 作為資料庫
         let db = null;
         let DB_NAME = localStorage.getItem('eswake-offline-active-db') || 'eswake-offline';
-        const DB_VERSION = 7;
-        const BACKUP_FORMAT_VERSION = 4;
+        const DB_VERSION = 8;
+        const BACKUP_FORMAT_VERSION = 5;
         const OFFLINE_STORE_CONFIG = {
             members: { keyPath: 'id' },
             coaches: { keyPath: 'id' },
@@ -1808,6 +1808,7 @@
             billing_relations: { keyPath: 'id', autoIncrement: true },
             board_storage: { keyPath: 'id', autoIncrement: true },
             size_charts: { keyPath: 'id' },
+            product_brands: { keyPath: 'id' },
             products: { keyPath: 'id' },
             shop_discount_presets: { keyPath: 'id' },
             product_variants: { keyPath: 'id' },
@@ -1819,6 +1820,9 @@
             booking_drivers: { keyPath: 'id', autoIncrement: true },
             coach_reports: { keyPath: 'id', autoIncrement: true },
             booking_participants: { keyPath: 'id', autoIncrement: true },
+            coach_designated_hour_entries: { keyPath: 'id', autoIncrement: true },
+            coach_designated_hour_report_skips: { keyPath: 'booking_participant_id' },
+            coach_designated_hour_revisions: { keyPath: 'id', autoIncrement: true },
             shop_orders: { keyPath: 'id' },
             shop_order_items: { keyPath: 'id' },
             shop_order_settlements: { keyPath: 'id' },
@@ -1833,10 +1837,16 @@
             reservation_restriction_coaches: { keyPath: ['restriction_id', 'coach_id'] },
             audit_log: { keyPath: 'id', autoIncrement: true },
             system_settings: { keyPath: 'id', autoIncrement: true },
+            line_webhook_contacts: { keyPath: 'line_user_id' },
+            line_webhook_events: { keyPath: 'webhook_event_id' },
+            line_reminder_guests: { keyPath: 'id' },
+            line_reminder_mappings: { keyPath: 'id' },
+            line_reminder_send_logs: { keyPath: 'id' },
+            line_push_daily_official: { keyPath: 'sent_date' },
             line_bindings: { keyPath: 'id', autoIncrement: true },
             backup_logs: { keyPath: 'id', autoIncrement: true }
         };
-        // v4 舊備份尚無這些後續新增表；缺少時以空表載入，保留既有備份相容性。
+        // 同版備份可能早於部分可選功能；缺少時以空表載入。
         const OPTIONAL_BACKUP_TABLES = new Set([
             'reservation_restriction_coaches',
             'voucher_package_purchases',
