@@ -4,7 +4,7 @@ import { resolveBoatTier } from './liffBookingBoats'
 import type { BookI18nStrings } from './liffBookingI18n'
 import { BEGINNER_LESSON_NOTE } from './liffBookingConfig'
 export const OFFICIAL_PRICE_INCLUDES =
-  '所有費用已含：基本裝備、教練、船、保險、停車費、冬季防寒衣。'
+  '所有費用已含：基本裝備、基本教學、船、保險、停車費、冬季防寒衣。'
 
 export const OFFICIAL_PRICE_FOOTNOTES = [
   'G23 大船預約時數至少 30 分鐘起。',
@@ -70,7 +70,7 @@ export const FIRST_TIME_WB_SMALL = 1700
 export const FIRST_TIME_BIG_BOAT = 2500
 
 /** 表單各步短版「已含」說明（單一來源） */
-export const BOOK_PRICE_INCLUDES_SHORT = '已含裝備、教練、船、保險'
+export const BOOK_PRICE_INCLUDES_SHORT = '已含裝備、基本教學、船、保險'
 
 /** 依項目與船型計初次體驗單價（初學不分會員） */
 export function firstTimeUnitPrice(activity: ActivityCode, boatTier: BoatTier): number {

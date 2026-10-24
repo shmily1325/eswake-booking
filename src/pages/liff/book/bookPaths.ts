@@ -2,12 +2,12 @@ import {
   isBookHostname,
   isGuideHostname,
   resolveBookHost,
-  resolveGuideHost,
 } from '../../../lib/bookHost'
 import { isShopHostname } from '../../../lib/shopHost'
 
 const LEGACY_BOOK_PATH = '/book'
 const LEGACY_GUIDE_PATH = '/book/guide'
+const MAIN_SITE_GUIDE_URL = 'https://www.eswakeschool.com/guide'
 
 function bookBaseUrlFromEnv(): string | undefined {
   return (import.meta.env.VITE_BOOK_BASE_URL as string | undefined)?.trim() || undefined
@@ -45,11 +45,11 @@ export function resolveGuidePublicUrl(): string {
   if (fromEnv) return fromEnv.replace(/\/$/, '')
   if (typeof window !== 'undefined') {
     if (isGuideSubdomain()) return window.location.origin
-    // 預約子網域不支援 /book/guide（middleware 會 404），改走 guide 子網域
-    if (isBookSubdomain()) return `https://${resolveGuideHost()}`
+    // 正式預約站一律前往主站新版 Guide；本機與舊同源部署仍保留 fallback。
+    if (isBookSubdomain()) return MAIN_SITE_GUIDE_URL
     return `${window.location.origin}${LEGACY_GUIDE_PATH}`
   }
-  return `https://${resolveGuideHost()}`
+  return MAIN_SITE_GUIDE_URL
 }
 
 function isOnShopHost(): boolean {

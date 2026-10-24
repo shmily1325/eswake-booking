@@ -41,7 +41,7 @@ describe('LIFF booking coaches', () => {
     expect(designatedCoachPrice20(johnny, 'WS')).toBeNull()
   })
 
-  it('does not hide Anita from LIFF booking', () => {
-    expect(isLiffBookCoachVisible('Anita')).toBe(true)
+  it('hides Anita from LIFF booking', () => {
+    expect(isLiffBookCoachVisible('Anita')).toBe(false)
   })
 })

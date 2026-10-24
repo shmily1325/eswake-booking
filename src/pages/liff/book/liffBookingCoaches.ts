@@ -2,7 +2,7 @@ import type { BookLocale } from './liffBookingI18n'
 import type { ActivityChoice, CoachOption } from './types'
 
 /** LIFF 指定教練：不顯示（客人會用群組聯繫） */
-const HIDDEN_COACH_NAME_PARTS = ['火龍', '火隆', '侑曄', '阿寶', 'SKY'] as const
+const HIDDEN_COACH_NAME_PARTS = ['火龍', '火隆', '侑曄', '阿寶', 'SKY', 'Anita'] as const
 
 const COACH_ENGLISH_NAMES: readonly {
   nameParts: readonly string[]
@@ -30,10 +30,6 @@ function price20From30(price30: number): number {
   return Math.floor(price30 * 20 / 30)
 }
 
-function price20From60(price60: number): number {
-  return Math.floor(price60 * 20 / 60)
-}
-
 interface CoachDesignatedRates {
   /** 名字包含任一關鍵字即匹配 */
   nameParts: readonly string[]
@@ -53,7 +49,6 @@ const COACH_DESIGNATED_20: readonly CoachDesignatedRates[] = [
   { nameParts: ['Jerry'], wb: price20From30(900), ws: price20From30(900) },
   { nameParts: ['ED'], ws: price20From30(900) },
   { nameParts: ['Kevin', '智凱'], ws: price20From30(600) },
-  { nameParts: ['Anita'], ws: price20From60(3000) }, // $3000/60分
   { nameParts: ['巨陽尼', '許書源'], wb: 500 },
   { nameParts: ['小胖'], wb: price20From30(750), ws: price20From30(750) },
   { nameParts: ['SKY'], wb: price20From30(900), ws: price20From30(900) },

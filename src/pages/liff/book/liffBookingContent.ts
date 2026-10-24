@@ -22,7 +22,7 @@ export const STEP1_ACTIVITY_DIFF_LINES = [
 ] as const
 
 /** Step 1 頂部價格區間（決策用，非卡片大字） */
-export const STEP1_PRICE_RANGE_SUFFIX = '已含裝備、教練、船'
+export const STEP1_PRICE_RANGE_SUFFIX = '已含裝備、基本教學、船'
 
 /** Step 1 選 WB 時船型提示（詳情區一行） */
 export const STEP1_WB_BOAT_NOTE = '寬板可選小船或大船；快艇衝浪與混合梯次需大船'
@@ -51,7 +51,7 @@ export const STEP3_SCHEDULE_NOTE = '先選偏好時段，確切時間待小編�
 
 /** Step 4 確認頁固定說明（一行） */
 export const STEP4_CONFIRM_NOTE =
-  '參考價以小編回覆為準 · 跟船第 2 位起 $300 · 已含裝備教練'
+  '參考價以小編回覆為準 · 跟船第 2 位起 $300 · 已含裝備與基本教學'
 
 /** @deprecated 請改用 STEP4_CONFIRM_NOTE */
 export const STEP4_CONFIRM_NOTES = [STEP4_CONFIRM_NOTE] as const
@@ -61,8 +61,8 @@ export const NOTES_PLACEHOLDER = '跟船人數、特殊需求（選填）'
 /** 官網（Google Sites） */
 export const OFFICIAL_SITE_URL = 'https://www.eswakeschool.com/'
 
-/** 行前須知（預設 guide 子網域；開發時由 resolveVisitGuideUrl 改為同源 /book/guide） */
-export const OFFICIAL_INFO_URL = 'https://guide.eswakeschool.com'
+/** 主站行前須知 */
+export const OFFICIAL_INFO_URL = 'https://www.eswakeschool.com/guide'
 
 /** 交通資訊（sites.google.com/.../交通方式） */
 export const TRANSPORT_INFO = {
@@ -94,7 +94,7 @@ export const TRANSPORT_INFO = {
 
 /** 收費說明（2026 官方價目 + FAQ 補充） */
 export const PRICING_CONTENT = {
-  includesNote: '所有費用已含：基本裝備、教練、船、保險、停車費、冬季防寒衣。',
+  includesNote: '所有費用已含：基本裝備、基本教學、船、保險、停車費、冬季防寒衣。',
   boatTypes: [
     {
       name: '基本型（小船）',

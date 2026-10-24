@@ -349,7 +349,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
   zh: {
     header: { brand: ES_BRAND.name, title: ES_BRAND.bookingAreaLabel, memberRateHint: '會員價估算' },
     localeToggle: { zh: '中文', en: 'EN' },
-    common: { priceIncludes: '已含裝備、教練、船、保險' },
+    common: { priceIncludes: '已含裝備、基本教學、船、保險' },
     steps: [
       { id: 1, title: '選項目', pill: '項目', subtitle: '快艇衝浪？寬板滑水？都要？' },
       { id: 2, title: '填人數', pill: '人數', subtitle: '幾位下水、第一次嗎、船型偏好' },
@@ -368,9 +368,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     notEnabled: { title: '預約表單尚未開放', body: '請繼續使用 LINE 官方帳號填寫預約資訊。' },
     step1: {
-      priceSuffix: '已含裝備、教練、船、保險',
+      priceSuffix: '已含裝備、基本教學、船、保險',
       priceBannerRange: (low, high) =>
-        `體驗 $${low.toLocaleString()}～$${high.toLocaleString()}／人 · 已含裝備、教練、船、保險`,
+        `體驗 $${low.toLocaleString()}～$${high.toLocaleString()}／人 · 已含裝備、基本教學、船、保險`,
       pickPrompt: '請選擇想體驗的項目',
       activities: {
         WS: { labelZh: '快艇衝浪', labelEn: 'Wakesurfing' },
@@ -741,7 +741,7 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
   en: {
     header: { brand: ES_BRAND.name, title: 'Book Online', memberRateHint: 'Member rate estimate' },
     localeToggle: { zh: '中文', en: 'EN' },
-    common: { priceIncludes: 'Gear, coach, boat & insurance included' },
+    common: { priceIncludes: 'Gear, basic coaching, boat & insurance included' },
     steps: [
       { id: 1, title: 'Activity', pill: 'Activity', subtitle: 'Wakesurf, wakeboard, or both' },
       { id: 2, title: 'Group', pill: 'Group', subtitle: 'Headcount, experience & boat preference' },
@@ -760,9 +760,9 @@ export const BOOK_I18N: Record<BookLocale, BookI18nStrings> = {
     },
     notEnabled: { title: 'Booking not available yet', body: 'Please book via our LINE official account.' },
     step1: {
-      priceSuffix: 'Gear, coach, boat & insurance included',
+      priceSuffix: 'Gear, basic coaching, boat & insurance included',
       priceBannerRange: (low, high) =>
-        `First-time $${low.toLocaleString()}–$${high.toLocaleString()}/person · Gear, coach, boat & insurance included`,
+        `First-time $${low.toLocaleString()}–$${high.toLocaleString()}/person · Gear, basic coaching, boat & insurance included`,
       pickPrompt: 'Choose an activity',
       activities: {
         WS: { labelZh: 'Wakesurfing', labelEn: 'Wakesurfing' },
